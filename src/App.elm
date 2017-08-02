@@ -2,21 +2,65 @@ module App exposing (..)
 
 import Html exposing (Html, text, div)
 import Svg exposing (Svg)
-import Svg.Attributes exposing (class, width, height, x, y)
+import Svg.Attributes exposing (class, width, height, x, y, fill)
+import Svg.Events exposing (onClick)
+import Array exposing (Array)
+import Hex
 
 
 ---- MODEL ----
 
 
-type alias Model =
-    { message : String
-    , logo : String
+type alias Color =
+    { red : Int
+    , green : Int
+    , blue : Int
     }
+
+
+black : Color
+black =
+    Color 0 0 0
+
+
+resolution : Int
+resolution =
+    16
+
+
+type alias Pixel =
+    { x : Int
+    , y : Int
+    , color : Maybe Color
+    }
+
+
+type alias Grid =
+    Array (Array Pixel)
+
+
+type alias Model =
+    { brushColor : Color
+    , grid : Grid
+    }
+
+
+makeGrid : Maybe Color -> Int -> Int -> Grid
+makeGrid color rows cols =
+    let
+        makeRow row =
+            Array.initialize cols (\col -> Pixel col row color)
+    in
+        Array.initialize rows makeRow
 
 
 init : String -> ( Model, Cmd Msg )
 init path =
-    ( { message = "Your Elm App is working!", logo = path }, Cmd.none )
+    ( { brushColor = black
+      , grid = makeGrid Nothing resolution resolution
+      }
+    , Cmd.none
+    )
 
 
 
@@ -25,11 +69,34 @@ init path =
 
 type Msg
     = NoOp
+    | Paint Int Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        Paint x y ->
+            ( { model | grid = updateGrid model.grid x y <| Just model.brushColor }
+            , Cmd.none
+            )
+
+
+updateGrid : Grid -> Int -> Int -> Maybe Color -> Grid
+updateGrid grid x y color =
+    let
+        updatePixel col row px =
+            if col == x && row == y then
+                { px | color = color }
+            else
+                px
+
+        updateRow row pixels =
+            Array.indexedMap (\col px -> updatePixel col row px) pixels
+    in
+        Array.indexedMap (\row pxs -> updateRow row pxs) grid
 
 
 
@@ -38,20 +105,50 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    div []
+        [ Svg.svg [ class "pixel-grid" ] <| viewGrid model.grid
+        ]
+
+
+viewGrid : Grid -> List (Svg Msg)
+viewGrid grid =
+    List.concat <| Array.toList <| Array.map viewRow grid
+
+
+viewRow : Array Pixel -> List (Svg Msg)
+viewRow pixels =
     let
-        rows =
-            List.map (row resolution) <| List.range 0 (resolution - 1)
+        makeRect pixel =
+            Svg.rect
+                [ width <| toString pixelSize
+                , height <| toString pixelSize
+                , x << toString <| pixel.x * (pixelSize + marginSize)
+                , y << toString <| pixel.y * (pixelSize + marginSize)
+                , onClick <| Paint pixel.x pixel.y
+                , fill <|
+                    Maybe.withDefault "#ccc" <|
+                        Maybe.map toHexColor pixel.color
+                ]
+                []
     in
-        div []
-            [ Svg.svg
-                [ class "pixel-grid" ]
-                rows
-            ]
+        Array.toList <| Array.map makeRect pixels
 
 
-resolution : Int
-resolution =
-    16
+toHexColor : Color -> String
+toHexColor { red, green, blue } =
+    "#" ++ toHex red ++ toHex green ++ toHex blue
+
+
+toHex : Int -> String
+toHex n =
+    let
+        str =
+            Hex.toString n
+    in
+        if String.length str == 1 then
+            "0" ++ str
+        else
+            str
 
 
 pixelSize : Int
@@ -62,24 +159,6 @@ pixelSize =
 marginSize : Int
 marginSize =
     1
-
-
-row : Int -> Int -> Svg msg
-row n j =
-    let
-        rect i =
-            Svg.rect
-                [ width <| toString pixelSize
-                , height <| toString pixelSize
-                , x << toString <| i * (pixelSize + marginSize)
-                , y << toString <| j * (pixelSize + marginSize)
-                ]
-                []
-
-        rects =
-            List.map rect <| List.range 0 (n - 1)
-    in
-        Svg.g [] rects
 
 
 
