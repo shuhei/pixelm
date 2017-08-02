@@ -1,11 +1,32 @@
 module App exposing (..)
 
 import Html exposing (Html, text, div)
+import Html.Attributes as HA
+import Html.Events as HE
 import Svg exposing (Svg)
 import Svg.Attributes exposing (class, width, height, x, y, fill)
-import Svg.Events exposing (onClick)
+import Svg.Events as SE
 import Array exposing (Array)
 import Hex
+
+
+---- CONSTANTS ----
+
+
+resolution : Int
+resolution =
+    16
+
+
+pixelSize : Int
+pixelSize =
+    20
+
+
+marginSize : Int
+marginSize =
+    1
+
 
 
 ---- MODEL ----
@@ -16,16 +37,6 @@ type alias Color =
     , green : Int
     , blue : Int
     }
-
-
-black : Color
-black =
-    Color 0 0 0
-
-
-resolution : Int
-resolution =
-    16
 
 
 type alias Pixel =
@@ -41,6 +52,7 @@ type alias Grid =
 
 type alias Model =
     { brushColor : Color
+    , brushes : List Color
     , grid : Grid
     }
 
@@ -56,11 +68,24 @@ makeGrid color rows cols =
 
 init : String -> ( Model, Cmd Msg )
 init path =
-    ( { brushColor = black
-      , grid = makeGrid Nothing resolution resolution
-      }
-    , Cmd.none
-    )
+    let
+        black =
+            Color 0 0 0
+
+        brushes =
+            [ black
+            , Color 255 0 0
+            , Color 0 255 0
+            , Color 0 0 255
+            ]
+
+        model =
+            { brushColor = black
+            , brushes = brushes
+            , grid = makeGrid Nothing resolution resolution
+            }
+    in
+        ( model, Cmd.none )
 
 
 
@@ -70,6 +95,7 @@ init path =
 type Msg
     = NoOp
     | Paint Int Int
+    | SelectBrush Color
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -80,6 +106,11 @@ update msg model =
 
         Paint x y ->
             ( { model | grid = updateGrid model.grid x y <| Just model.brushColor }
+            , Cmd.none
+            )
+
+        SelectBrush color ->
+            ( { model | brushColor = color }
             , Cmd.none
             )
 
@@ -107,6 +138,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ Svg.svg [ class "pixel-grid" ] <| viewGrid model.grid
+        , viewBrushSelector model.brushColor model.brushes
         ]
 
 
@@ -124,9 +156,9 @@ viewRow pixels =
                 , height <| toString pixelSize
                 , x << toString <| pixel.x * (pixelSize + marginSize)
                 , y << toString <| pixel.y * (pixelSize + marginSize)
-                , onClick <| Paint pixel.x pixel.y
+                , SE.onMouseDown <| Paint pixel.x pixel.y
                 , fill <|
-                    Maybe.withDefault "#ccc" <|
+                    Maybe.withDefault "#f9f9f9" <|
                         Maybe.map toHexColor pixel.color
                 ]
                 []
@@ -151,14 +183,22 @@ toHex n =
             str
 
 
-pixelSize : Int
-pixelSize =
-    20
-
-
-marginSize : Int
-marginSize =
-    1
+viewBrushSelector : Color -> List Color -> Html Msg
+viewBrushSelector selected brushes =
+    let
+        viewBrush brush =
+            div
+                [ HA.classList
+                    [ ( "brush-selector__brush", True )
+                    , ( "brush-selector__brush--selected", brush == selected )
+                    ]
+                , HA.style [ ( "background-color", toHexColor brush ) ]
+                , HE.onClick <| SelectBrush brush
+                ]
+                []
+    in
+        div [ HA.class "brush-selector" ] <|
+            List.map viewBrush brushes
 
 
 
