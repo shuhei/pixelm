@@ -8,6 +8,7 @@ import Svg.Attributes exposing (class, width, height, x, y, fill)
 import Svg.Events as SE
 import Array exposing (Array)
 import Hex
+import Array2 exposing (Array2)
 
 
 ---- CONSTANTS ----
@@ -39,6 +40,10 @@ type alias Color =
     }
 
 
+
+-- TODO: Remove x and y from Pixel!
+
+
 type alias Pixel =
     { x : Int
     , y : Int
@@ -47,7 +52,7 @@ type alias Pixel =
 
 
 type alias Grid =
-    Array (Array Pixel)
+    Array2 Pixel
 
 
 type alias Model =
@@ -57,13 +62,9 @@ type alias Model =
     }
 
 
-makeGrid : Maybe Color -> Int -> Int -> Grid
-makeGrid color rows cols =
-    let
-        makeRow row =
-            Array.initialize cols (\col -> Pixel col row color)
-    in
-        Array.initialize rows makeRow
+makeGrid : Int -> Int -> Maybe Color -> Grid
+makeGrid cols rows color =
+    Array2.initialize cols rows (\x y -> Pixel x y color)
 
 
 init : String -> ( Model, Cmd Msg )
@@ -82,7 +83,7 @@ init path =
         model =
             { brushColor = black
             , brushes = brushes
-            , grid = makeGrid Nothing resolution resolution
+            , grid = makeGrid resolution resolution Nothing
             }
     in
         ( model, Cmd.none )
@@ -105,7 +106,7 @@ update msg model =
             ( model, Cmd.none )
 
         Paint x y ->
-            ( { model | grid = updateGrid model.grid x y <| Just model.brushColor }
+            ( { model | grid = updateGrid x y (Just model.brushColor) model.grid }
             , Cmd.none
             )
 
@@ -115,19 +116,16 @@ update msg model =
             )
 
 
-updateGrid : Grid -> Int -> Int -> Maybe Color -> Grid
-updateGrid grid x y color =
+updateGrid : Int -> Int -> Maybe Color -> Grid -> Grid
+updateGrid col row color =
     let
-        updatePixel col row px =
-            if col == x && row == y then
+        updatePixel c r px =
+            if col == c && row == r then
                 { px | color = color }
             else
                 px
-
-        updateRow row pixels =
-            Array.indexedMap (\col px -> updatePixel col row px) pixels
     in
-        Array.indexedMap (\row pxs -> updateRow row pxs) grid
+        Array2.indexedMap updatePixel
 
 
 
