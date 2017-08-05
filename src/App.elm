@@ -1,4 +1,4 @@
-module App exposing (..)
+port module App exposing (..)
 
 import Html exposing (Html)
 import Html.Attributes as HA
@@ -8,7 +8,7 @@ import Svg.Attributes as SA
 import Svg.Events as SE
 import Array2 exposing (Array2)
 import Color exposing (Color)
-import ColorUtil
+import ColorUtil exposing (RGBA)
 
 
 ---- CONSTANTS ----
@@ -102,6 +102,7 @@ type Msg
     | ClickPixel Int Int
     | SelectBrush Color
     | SelectMode Mode
+    | Download
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -130,6 +131,14 @@ update msg model =
             , Cmd.none
             )
 
+        Download ->
+            ( model
+            , download <| Array2.map Color.toRgb model.grid
+            )
+
+
+port download : Array2 RGBA -> Cmd msg
+
 
 
 ---- VIEW ----
@@ -148,6 +157,7 @@ view model =
             ]
         , viewModes model.mode
         , viewBrushSelector model.brushColor model.brushes
+        , viewDownload
         ]
 
 
@@ -161,6 +171,7 @@ viewModes selectedMode =
                         [ ( "mode", True )
                         , ( "mode--selected", mode == selectedMode )
                         ]
+                    , HA.href "#"
                     , HE.onClick <| SelectMode mode
                     ]
                     [ Html.text label ]
@@ -170,6 +181,17 @@ viewModes selectedMode =
             [ menu Paint "Paint"
             , menu Eraser "Eraser"
             ]
+
+
+viewDownload : Html Msg
+viewDownload =
+    Html.div []
+        [ Html.a
+            [ HA.href "#"
+            , HE.onClick Download
+            ]
+            [ Html.text "Download" ]
+        ]
 
 
 viewBorders : Svg msg

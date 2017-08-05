@@ -3,6 +3,14 @@ module ColorUtil exposing (..)
 import Color exposing (Color)
 
 
+type alias RGBA =
+    { red : Int
+    , green : Int
+    , blue : Int
+    , alpha : Float
+    }
+
+
 toColorString : Color -> String
 toColorString color =
     let

@@ -33,6 +33,11 @@ initialize cols rows f =
         Array.initialize rows makeRow
 
 
+map : (a -> b) -> Array2 a -> Array2 b
+map =
+    Array.map << Array.map
+
+
 indexedMap : (Int -> Int -> a -> b) -> Array2 a -> Array2 b
 indexedMap f =
     let
