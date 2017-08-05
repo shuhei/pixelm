@@ -24,14 +24,9 @@ pixelSize =
     20
 
 
-marginSize : Int
-marginSize =
-    1
-
-
 canvasSize : Int
 canvasSize =
-    pixelSize * resolution + marginSize * (resolution - 1)
+    pixelSize * resolution
 
 
 
@@ -112,8 +107,8 @@ view model =
             , SA.width <| toString canvasSize
             , SA.height <| toString canvasSize
             ]
-            [ viewBorders
-            , viewGrid model.grid
+            [ viewGrid model.grid
+            , viewBorders
             ]
         , viewBrushSelector model.brushColor model.brushes
         ]
@@ -126,7 +121,7 @@ viewBorders =
             List.range 0 (resolution - 1)
 
         pos n =
-            toFloat ((pixelSize + marginSize) * n) - 0.5
+            toFloat (pixelSize * n) + 0.5
 
         vertical n =
             Svg.line
@@ -161,8 +156,8 @@ viewGrid grid =
             Svg.rect
                 [ SA.width <| toString pixelSize
                 , SA.height <| toString pixelSize
-                , SA.x <| toString <| col * (pixelSize + marginSize)
-                , SA.y <| toString <| row * (pixelSize + marginSize)
+                , SA.x <| toString <| col * pixelSize
+                , SA.y <| toString <| row * pixelSize
                 , SA.fill <| ColorUtil.toColorString pixel
                 , SE.onMouseDown <| Paint col row
                 ]
