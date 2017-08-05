@@ -34,3 +34,11 @@ img {
 .brush-selector__brush--selected {
   opacity: 1;
 }
+
+.mode {
+  color: #999;
+}
+
+.mode--selected {
+  color: #333;
+}

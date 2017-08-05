@@ -1,6 +1,6 @@
 module App exposing (..)
 
-import Html exposing (Html, text, div)
+import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Svg exposing (Svg)
@@ -33,12 +33,18 @@ canvasSize =
 ---- MODEL ----
 
 
+type Mode
+    = Paint
+    | Eraser
+
+
 type alias Grid =
     Array2 Color
 
 
 type alias Model =
-    { brushColor : Color
+    { mode : Mode
+    , brushColor : Color
     , brushes : List Color
     , grid : Grid
     }
@@ -49,20 +55,39 @@ makeGrid cols rows color =
     Array2.initialize cols rows (\x y -> color)
 
 
+brushes : List Color
+brushes =
+    [ Color.black
+    , Color.white
+    , Color.red
+    , Color.orange
+    , Color.yellow
+    , Color.green
+    , Color.blue
+    , Color.purple
+    , Color.lightRed
+    , Color.lightOrange
+    , Color.lightYellow
+    , Color.lightGreen
+    , Color.lightBlue
+    , Color.lightPurple
+    , Color.darkRed
+    , Color.darkOrange
+    , Color.darkYellow
+    , Color.darkGreen
+    , Color.darkBlue
+    , Color.darkPurple
+    ]
+
+
 init : String -> ( Model, Cmd Msg )
 init path =
     let
-        brushes =
-            [ Color.black
-            , Color.red
-            , Color.green
-            , Color.blue
-            ]
-
         model =
-            { brushColor = Color.black
+            { mode = Paint
+            , brushColor = Color.black
             , brushes = brushes
-            , grid = makeGrid resolution resolution <| Color.rgba 0 0 0 0
+            , grid = makeGrid resolution resolution ColorUtil.transparent
             }
     in
         ( model, Cmd.none )
@@ -74,8 +99,9 @@ init path =
 
 type Msg
     = NoOp
-    | Paint Int Int
+    | ClickPixel Int Int
     | SelectBrush Color
+    | SelectMode Mode
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -84,10 +110,20 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        Paint x y ->
-            ( { model | grid = Array2.set x y model.brushColor model.grid }
-            , Cmd.none
-            )
+        SelectMode mode ->
+            ( { model | mode = mode }, Cmd.none )
+
+        ClickPixel x y ->
+            case model.mode of
+                Paint ->
+                    ( { model | grid = Array2.set x y model.brushColor model.grid }
+                    , Cmd.none
+                    )
+
+                Eraser ->
+                    ( { model | grid = Array2.set x y ColorUtil.transparent model.grid }
+                    , Cmd.none
+                    )
 
         SelectBrush color ->
             ( { model | brushColor = color }
@@ -101,7 +137,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
+    Html.div []
         [ Svg.svg
             [ SA.class "pixel-grid"
             , SA.width <| toString canvasSize
@@ -110,8 +146,30 @@ view model =
             [ viewGrid model.grid
             , viewBorders
             ]
+        , viewModes model.mode
         , viewBrushSelector model.brushColor model.brushes
         ]
+
+
+viewModes : Mode -> Html Msg
+viewModes selectedMode =
+    let
+        menu mode label =
+            Html.div []
+                [ Html.a
+                    [ HA.classList
+                        [ ( "mode", True )
+                        , ( "mode--selected", mode == selectedMode )
+                        ]
+                    , HE.onClick <| SelectMode mode
+                    ]
+                    [ Html.text label ]
+                ]
+    in
+        Html.div []
+            [ menu Paint "Paint"
+            , menu Eraser "Eraser"
+            ]
 
 
 viewBorders : Svg msg
@@ -159,7 +217,7 @@ viewGrid grid =
                 , SA.x <| toString <| col * pixelSize
                 , SA.y <| toString <| row * pixelSize
                 , SA.fill <| ColorUtil.toColorString pixel
-                , SE.onMouseDown <| Paint col row
+                , SE.onMouseDown <| ClickPixel col row
                 ]
                 []
 
@@ -173,7 +231,7 @@ viewBrushSelector : Color -> List Color -> Html Msg
 viewBrushSelector selected brushes =
     let
         viewBrush brush =
-            div
+            Html.div
                 [ HA.classList
                     [ ( "brush-selector__brush", True )
                     , ( "brush-selector__brush--selected", brush == selected )
@@ -183,7 +241,7 @@ viewBrushSelector selected brushes =
                 ]
                 []
     in
-        div [ HA.class "brush-selector" ] <|
+        Html.div [ HA.class "brush-selector" ] <|
             List.map viewBrush brushes
 
 

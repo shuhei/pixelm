@@ -18,3 +18,8 @@ toColorString color =
             ++ ","
             ++ toString alpha
             ++ ")"
+
+
+transparent : Color
+transparent =
+    Color.rgba 0 0 0 0
