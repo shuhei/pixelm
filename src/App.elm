@@ -4,11 +4,11 @@ import Html exposing (Html, text, div)
 import Html.Attributes as HA
 import Html.Events as HE
 import Svg exposing (Svg)
-import Svg.Attributes exposing (class, width, height, x, y, fill)
+import Svg.Attributes as SA
 import Svg.Events as SE
-import Array exposing (Array)
-import Hex
 import Array2 exposing (Array2)
+import Color exposing (Color)
+import ColorUtil
 
 
 ---- CONSTANTS ----
@@ -29,30 +29,17 @@ marginSize =
     1
 
 
+canvasSize : Int
+canvasSize =
+    pixelSize * resolution + marginSize * (resolution - 1)
+
+
 
 ---- MODEL ----
 
 
-type alias Color =
-    { red : Int
-    , green : Int
-    , blue : Int
-    }
-
-
-
--- TODO: Remove x and y from Pixel!
-
-
-type alias Pixel =
-    { x : Int
-    , y : Int
-    , color : Maybe Color
-    }
-
-
 type alias Grid =
-    Array2 Pixel
+    Array2 Color
 
 
 type alias Model =
@@ -62,28 +49,25 @@ type alias Model =
     }
 
 
-makeGrid : Int -> Int -> Maybe Color -> Grid
+makeGrid : Int -> Int -> Color -> Grid
 makeGrid cols rows color =
-    Array2.initialize cols rows (\x y -> Pixel x y color)
+    Array2.initialize cols rows (\x y -> color)
 
 
 init : String -> ( Model, Cmd Msg )
 init path =
     let
-        black =
-            Color 0 0 0
-
         brushes =
-            [ black
-            , Color 255 0 0
-            , Color 0 255 0
-            , Color 0 0 255
+            [ Color.black
+            , Color.red
+            , Color.green
+            , Color.blue
             ]
 
         model =
-            { brushColor = black
+            { brushColor = Color.black
             , brushes = brushes
-            , grid = makeGrid resolution resolution Nothing
+            , grid = makeGrid resolution resolution <| Color.rgba 0 0 0 0
             }
     in
         ( model, Cmd.none )
@@ -106,7 +90,7 @@ update msg model =
             ( model, Cmd.none )
 
         Paint x y ->
-            ( { model | grid = updateGrid x y (Just model.brushColor) model.grid }
+            ( { model | grid = Array2.set x y model.brushColor model.grid }
             , Cmd.none
             )
 
@@ -116,18 +100,6 @@ update msg model =
             )
 
 
-updateGrid : Int -> Int -> Maybe Color -> Grid -> Grid
-updateGrid col row color =
-    let
-        updatePixel c r px =
-            if col == c && row == r then
-                { px | color = color }
-            else
-                px
-    in
-        Array2.indexedMap updatePixel
-
-
 
 ---- VIEW ----
 
@@ -135,50 +107,71 @@ updateGrid col row color =
 view : Model -> Html Msg
 view model =
     div []
-        [ Svg.svg [ class "pixel-grid" ] <| viewGrid model.grid
+        [ Svg.svg
+            [ SA.class "pixel-grid"
+            , SA.width <| toString canvasSize
+            , SA.height <| toString canvasSize
+            ]
+            [ viewBorders
+            , viewGrid model.grid
+            ]
         , viewBrushSelector model.brushColor model.brushes
         ]
 
 
-viewGrid : Grid -> List (Svg Msg)
-viewGrid grid =
-    List.concat <| Array.toList <| Array.map viewRow grid
-
-
-viewRow : Array Pixel -> List (Svg Msg)
-viewRow pixels =
+viewBorders : Svg msg
+viewBorders =
     let
-        makeRect pixel =
-            Svg.rect
-                [ width <| toString pixelSize
-                , height <| toString pixelSize
-                , x << toString <| pixel.x * (pixelSize + marginSize)
-                , y << toString <| pixel.y * (pixelSize + marginSize)
-                , SE.onMouseDown <| Paint pixel.x pixel.y
-                , fill <|
-                    Maybe.withDefault "#f9f9f9" <|
-                        Maybe.map toHexColor pixel.color
+        ns =
+            List.range 0 (resolution - 1)
+
+        pos n =
+            toFloat ((pixelSize + marginSize) * n) - 0.5
+
+        vertical n =
+            Svg.line
+                [ SA.x1 <| toString <| pos n
+                , SA.y1 <| toString 0
+                , SA.x2 <| toString <| pos n
+                , SA.y2 <| toString canvasSize
+                ]
+                []
+
+        horizontal n =
+            Svg.line
+                [ SA.x1 <| toString 0
+                , SA.y1 <| toString <| pos n
+                , SA.x2 <| toString canvasSize
+                , SA.y2 <| toString <| pos n
                 ]
                 []
     in
-        Array.toList <| Array.map makeRect pixels
+        Svg.g
+            [ SA.class "grid-borders"
+            , SA.strokeWidth "1"
+            , SA.stroke "white"
+            ]
+            (List.map vertical ns ++ List.map horizontal ns)
 
 
-toHexColor : Color -> String
-toHexColor { red, green, blue } =
-    "#" ++ toHex red ++ toHex green ++ toHex blue
-
-
-toHex : Int -> String
-toHex n =
+viewGrid : Grid -> Svg Msg
+viewGrid grid =
     let
-        str =
-            Hex.toString n
+        makeRect col row pixel =
+            Svg.rect
+                [ SA.width <| toString pixelSize
+                , SA.height <| toString pixelSize
+                , SA.x <| toString <| col * (pixelSize + marginSize)
+                , SA.y <| toString <| row * (pixelSize + marginSize)
+                , SA.fill <| ColorUtil.toColorString pixel
+                , SE.onMouseDown <| Paint col row
+                ]
+                []
+
+        rects =
+            Array2.toList <| Array2.indexedMap makeRect grid
     in
-        if String.length str == 1 then
-            "0" ++ str
-        else
-            str
+        Svg.g [] rects
 
 
 viewBrushSelector : Color -> List Color -> Html Msg
@@ -190,7 +183,7 @@ viewBrushSelector selected brushes =
                     [ ( "brush-selector__brush", True )
                     , ( "brush-selector__brush--selected", brush == selected )
                     ]
-                , HA.style [ ( "background-color", toHexColor brush ) ]
+                , HA.style [ ( "background-color", ColorUtil.toColorString brush ) ]
                 , HE.onClick <| SelectBrush brush
                 ]
                 []

@@ -12,9 +12,8 @@ img {
 }
 
 .pixel-grid {
-  width: 340px;
-  height: 340px;
   cursor: pointer;
+  background-color: #eee;
 }
 
 .brush-selector {
