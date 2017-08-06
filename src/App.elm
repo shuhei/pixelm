@@ -170,22 +170,21 @@ view model =
 viewModes : Mode -> Html Msg
 viewModes selectedMode =
     let
-        menu mode label =
-            Html.div []
-                [ Html.a
-                    [ HA.classList
-                        [ ( "mode", True )
-                        , ( "mode--selected", mode == selectedMode )
-                        ]
-                    , HA.href "#"
-                    , HE.onClick <| SelectMode mode
+        menu mode label iconName =
+            Html.a
+                [ HA.classList
+                    [ ( "mode", True )
+                    , ( "mode--selected", mode == selectedMode )
                     ]
-                    [ Html.text label ]
+                , HA.href "#"
+                , HA.title label
+                , HE.onClick <| SelectMode mode
                 ]
+                [ icon iconName [] ]
     in
         Html.div []
-            [ menu Paint "Paint"
-            , menu Eraser "Eraser"
+            [ menu Paint "Paint" "paint-brush"
+            , menu Eraser "Eraser" "eraser"
             ]
 
 
@@ -194,9 +193,10 @@ viewDownload =
     Html.div []
         [ Html.a
             [ HA.href "#"
+            , HA.title "Download"
             , HE.onClick Download
             ]
-            [ Html.text "Download" ]
+            [ icon "download" [] ]
         ]
 
 
@@ -279,6 +279,13 @@ viewBrushSelector selected brushes =
             viewSelected :: separator :: viewBrushes
     in
         Html.div [ HA.class "brush-selector" ] views
+
+
+icon : String -> List (Html.Attribute msg) -> Html msg
+icon name attrs =
+    Html.i
+        ((HA.class <| "fa fa-" ++ name) :: attrs)
+        []
 
 
 
