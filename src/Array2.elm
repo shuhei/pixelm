@@ -55,3 +55,8 @@ toList2 =
 toList : Array2 a -> List a
 toList =
     List.concat << toList2
+
+
+fromList2 : List (List a) -> Array2 a
+fromList2 =
+    Array.fromList << List.map Array.fromList
