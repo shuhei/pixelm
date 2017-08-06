@@ -23,16 +23,7 @@ img {
   display: inline-block;
   width: 20px;
   height: 20px;
-  opacity: 0.5;
   cursor: pointer;
-}
-
-.brush-selector__brush:hover {
-  opacity: 1;
-}
-
-.brush-selector__brush--selected {
-  opacity: 1;
 }
 
 .mode {

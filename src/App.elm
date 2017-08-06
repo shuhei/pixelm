@@ -57,9 +57,7 @@ makeGrid cols rows color =
 
 brushes : List Color
 brushes =
-    [ Color.black
-    , Color.white
-    , Color.red
+    [ Color.red
     , Color.orange
     , Color.yellow
     , Color.green
@@ -77,6 +75,14 @@ brushes =
     , Color.darkGreen
     , Color.darkBlue
     , Color.darkPurple
+    , Color.white
+    , Color.lightGray
+    , Color.gray
+    , Color.darkGray
+    , Color.lightCharcoal
+    , Color.charcoal
+    , Color.darkCharcoal
+    , Color.black
     ]
 
 
@@ -127,7 +133,7 @@ update msg model =
                     )
 
         SelectBrush color ->
-            ( { model | brushColor = color }
+            ( { model | brushColor = color, mode = Paint }
             , Cmd.none
             )
 
@@ -254,17 +260,25 @@ viewBrushSelector selected brushes =
     let
         viewBrush brush =
             Html.div
-                [ HA.classList
-                    [ ( "brush-selector__brush", True )
-                    , ( "brush-selector__brush--selected", brush == selected )
-                    ]
+                [ HA.class "brush-selector__brush"
                 , HA.style [ ( "background-color", ColorUtil.toColorString brush ) ]
                 , HE.onClick <| SelectBrush brush
                 ]
                 []
-    in
-        Html.div [ HA.class "brush-selector" ] <|
+
+        viewBrushes =
             List.map viewBrush brushes
+
+        viewSelected =
+            viewBrush selected
+
+        separator =
+            Html.div [ HA.class "brush-selector__separator" ] []
+
+        views =
+            viewSelected :: separator :: viewBrushes
+    in
+        Html.div [ HA.class "brush-selector" ] views
 
 
 
