@@ -50,7 +50,7 @@ function fillColor(rgba) {
 
 function downloadCanvas(canvas) {
   var a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'pixels.png';
+  a.href = canvas.toDataURL('image/gif');
+  a.download = 'pixels.gif';
   a.click();
 }
