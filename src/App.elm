@@ -44,6 +44,7 @@ type alias Grid =
 
 type alias Model =
     { mode : Mode
+    , isMouseDown : Bool
     , brushColor : Color
     , brushes : List Color
     , grid : Grid
@@ -91,6 +92,7 @@ init path =
     let
         model =
             { mode = Paint
+            , isMouseDown = False
             , brushColor = Color.black
             , brushes = brushes
             , grid = makeGrid resolution resolution ColorUtil.transparent
@@ -105,32 +107,22 @@ init path =
 
 type Msg
     = NoOp
-    | ClickPixel Int Int
     | SelectBrush Color
     | SelectMode Mode
     | Download
+    | MouseDownOnPixel Int Int
+    | MouseMoveOnPixel Int Int
+    | MouseUpOnPixel Int Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
+    case Debug.log "msg" msg of
         NoOp ->
             ( model, Cmd.none )
 
         SelectMode mode ->
             ( { model | mode = mode }, Cmd.none )
-
-        ClickPixel x y ->
-            case model.mode of
-                Paint ->
-                    ( { model | grid = Array2.set x y model.brushColor model.grid }
-                    , Cmd.none
-                    )
-
-                Eraser ->
-                    ( { model | grid = Array2.set x y ColorUtil.transparent model.grid }
-                    , Cmd.none
-                    )
 
         SelectBrush color ->
             ( { model | brushColor = color, mode = Paint }
@@ -141,6 +133,37 @@ update msg model =
             ( model
             , download <| Array2.map Color.toRgb model.grid
             )
+
+        MouseDownOnPixel x y ->
+            ( changeMouseDown True <| updatePixel x y model
+            , Cmd.none
+            )
+
+        MouseMoveOnPixel x y ->
+            if model.isMouseDown then
+                ( updatePixel x y model, Cmd.none )
+            else
+                ( model, Cmd.none )
+
+        MouseUpOnPixel x y ->
+            ( changeMouseDown False <| updatePixel x y model
+            , Cmd.none
+            )
+
+
+updatePixel : Int -> Int -> Model -> Model
+updatePixel x y model =
+    case model.mode of
+        Paint ->
+            { model | grid = Array2.set x y model.brushColor model.grid }
+
+        Eraser ->
+            { model | grid = Array2.set x y ColorUtil.transparent model.grid }
+
+
+changeMouseDown : Bool -> Model -> Model
+changeMouseDown mouseDown model =
+    { model | isMouseDown = mouseDown }
 
 
 port download : Array2 RGBA -> Cmd msg
@@ -245,7 +268,9 @@ viewGrid grid =
                 , SA.x <| toString <| col * pixelSize
                 , SA.y <| toString <| row * pixelSize
                 , SA.fill <| ColorUtil.toColorString pixel
-                , SE.onMouseDown <| ClickPixel col row
+                , SE.onMouseDown <| MouseDownOnPixel col row
+                , SE.onMouseMove <| MouseMoveOnPixel col row
+                , SE.onMouseUp <| MouseUpOnPixel col row
                 ]
                 []
 
