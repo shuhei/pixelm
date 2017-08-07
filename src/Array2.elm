@@ -60,3 +60,13 @@ toList =
 fromList2 : List (List a) -> Array2 a
 fromList2 =
     Array.fromList << List.map Array.fromList
+
+
+foldl : (a -> b -> b) -> b -> Array2 a -> b
+foldl f =
+    Array.foldl (\xs prev -> Array.foldl f prev xs)
+
+
+foldr : (a -> b -> b) -> b -> Array2 a -> b
+foldr f =
+    Array.foldr (\xs prev -> Array.foldr f prev xs)

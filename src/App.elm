@@ -3,6 +3,7 @@ port module App exposing (..)
 import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Dict
 import Set
 import Svg exposing (Svg)
 import Svg.Attributes as SA
@@ -238,6 +239,7 @@ view model =
             ]
         , viewModes model.mode
         , viewColorSelector model.foregroundColor model.colors
+        , viewPalette model.grid
         , viewDownload
         ]
 
@@ -333,25 +335,41 @@ viewGrid grid =
         Svg.g [] rects
 
 
+viewColor : Color -> Html Msg
+viewColor color =
+    Html.div
+        [ HA.class "color-selector__color"
+        , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
+        , HE.onClick <| SelectColor color
+        ]
+        []
+
+
 viewColorSelector : Color -> List Color -> Html Msg
 viewColorSelector selected colors =
     let
-        viewColor color =
-            Html.div
-                [ HA.class "color-selector__color"
-                , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
-                , HE.onClick <| SelectColor color
-                ]
-                []
-
-        viewSelected =
-            viewColor selected
-
         separator =
             Html.div [ HA.class "color-selector__separator" ] []
 
         views =
-            viewSelected :: separator :: List.map viewColor colors
+            viewColor selected :: separator :: List.map viewColor colors
+    in
+        Html.div [ HA.class "color-selector" ] views
+
+
+viewPalette : Grid -> Html Msg
+viewPalette grid =
+    let
+        putColor c used =
+            Dict.insert (ColorUtil.toColorString c) c used
+
+        usedColors =
+            Array2.foldr putColor Dict.empty grid
+                |> Dict.values
+                |> List.filter (\x -> x /= ColorUtil.transparent)
+
+        views =
+            List.map viewColor usedColors
     in
         Html.div [ HA.class "color-selector" ] views
 
