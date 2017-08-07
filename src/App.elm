@@ -111,8 +111,10 @@ type Msg
     | SelectMode Mode
     | Download
     | MouseDownOnPixel Int Int
-    | MouseMoveOnPixel Int Int
+    | MouseOverOnPixel Int Int
     | MouseUpOnPixel Int Int
+    | MouseDownOnContainer
+    | MouseUpOnContainer
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -135,20 +137,26 @@ update msg model =
             )
 
         MouseDownOnPixel x y ->
-            ( changeMouseDown True <| updatePixel x y model
+            ( setMouseDown True <| updatePixel x y model
             , Cmd.none
             )
 
-        MouseMoveOnPixel x y ->
+        MouseOverOnPixel x y ->
             if model.isMouseDown then
                 ( updatePixel x y model, Cmd.none )
             else
                 ( model, Cmd.none )
 
         MouseUpOnPixel x y ->
-            ( changeMouseDown False <| updatePixel x y model
+            ( setMouseDown False <| updatePixel x y model
             , Cmd.none
             )
+
+        MouseDownOnContainer ->
+            ( setMouseDown True model, Cmd.none )
+
+        MouseUpOnContainer ->
+            ( setMouseDown False model, Cmd.none )
 
 
 updatePixel : Int -> Int -> Model -> Model
@@ -161,8 +169,8 @@ updatePixel x y model =
             { model | grid = Array2.set x y ColorUtil.transparent model.grid }
 
 
-changeMouseDown : Bool -> Model -> Model
-changeMouseDown mouseDown model =
+setMouseDown : Bool -> Model -> Model
+setMouseDown mouseDown model =
     { model | isMouseDown = mouseDown }
 
 
@@ -175,7 +183,10 @@ port download : Array2 RGBA -> Cmd msg
 
 view : Model -> Html Msg
 view model =
-    Html.div []
+    Html.div
+        [ HE.onMouseDown <| MouseDownOnContainer
+        , HE.onMouseUp <| MouseUpOnContainer
+        ]
         [ Svg.svg
             [ SA.class "pixel-grid"
             , SA.width <| toString canvasSize
@@ -269,7 +280,7 @@ viewGrid grid =
                 , SA.y <| toString <| row * pixelSize
                 , SA.fill <| ColorUtil.toColorString pixel
                 , SE.onMouseDown <| MouseDownOnPixel col row
-                , SE.onMouseMove <| MouseMoveOnPixel col row
+                , SE.onMouseOver <| MouseOverOnPixel col row
                 , SE.onMouseUp <| MouseUpOnPixel col row
                 ]
                 []
