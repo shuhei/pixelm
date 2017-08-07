@@ -16,10 +16,10 @@ img {
   background-color: #eee;
 }
 
-.brush-selector {
+.color-selector {
 }
 
-.brush-selector__brush {
+.color-selector__color {
   display: inline-block;
   width: 20px;
   height: 20px;

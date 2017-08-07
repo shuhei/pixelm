@@ -3,6 +3,7 @@ port module App exposing (..)
 import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Set
 import Svg exposing (Svg)
 import Svg.Attributes as SA
 import Svg.Events as SE
@@ -36,6 +37,7 @@ canvasSize =
 type Mode
     = Paint
     | Eraser
+    | Bucket
 
 
 type alias Grid =
@@ -45,8 +47,8 @@ type alias Grid =
 type alias Model =
     { mode : Mode
     , isMouseDown : Bool
-    , brushColor : Color
-    , brushes : List Color
+    , foregroundColor : Color
+    , colors : List Color
     , grid : Grid
     }
 
@@ -56,8 +58,8 @@ makeGrid cols rows color =
     Array2.initialize cols rows (\x y -> color)
 
 
-brushes : List Color
-brushes =
+colors : List Color
+colors =
     [ Color.red
     , Color.orange
     , Color.yellow
@@ -93,8 +95,8 @@ init path =
         model =
             { mode = Paint
             , isMouseDown = False
-            , brushColor = Color.black
-            , brushes = brushes
+            , foregroundColor = Color.black
+            , colors = colors
             , grid = makeGrid resolution resolution ColorUtil.transparent
             }
     in
@@ -107,7 +109,7 @@ init path =
 
 type Msg
     = NoOp
-    | SelectBrush Color
+    | SelectColor Color
     | SelectMode Mode
     | Download
     | MouseDownOnPixel Int Int
@@ -126,8 +128,8 @@ update msg model =
         SelectMode mode ->
             ( { model | mode = mode }, Cmd.none )
 
-        SelectBrush color ->
-            ( { model | brushColor = color, mode = Paint }
+        SelectColor color ->
+            ( { model | foregroundColor = color }
             , Cmd.none
             )
 
@@ -137,18 +139,20 @@ update msg model =
             )
 
         MouseDownOnPixel x y ->
-            ( setMouseDown True <| updatePixel x y model
+            ( setMouseDown True { model | grid = updateGrid x y model }
             , Cmd.none
             )
 
         MouseOverOnPixel x y ->
             if model.isMouseDown then
-                ( updatePixel x y model, Cmd.none )
+                ( { model | grid = updateGrid x y model }
+                , Cmd.none
+                )
             else
                 ( model, Cmd.none )
 
         MouseUpOnPixel x y ->
-            ( setMouseDown False <| updatePixel x y model
+            ( setMouseDown False { model | grid = updateGrid x y model }
             , Cmd.none
             )
 
@@ -159,14 +163,51 @@ update msg model =
             ( setMouseDown False model, Cmd.none )
 
 
-updatePixel : Int -> Int -> Model -> Model
-updatePixel x y model =
+updateGrid : Int -> Int -> Model -> Grid
+updateGrid x y model =
     case model.mode of
         Paint ->
-            { model | grid = Array2.set x y model.brushColor model.grid }
+            Array2.set x y model.foregroundColor model.grid
 
         Eraser ->
-            { model | grid = Array2.set x y ColorUtil.transparent model.grid }
+            Array2.set x y ColorUtil.transparent model.grid
+
+        Bucket ->
+            case Array2.get x y model.grid of
+                Nothing ->
+                    model.grid
+
+                Just color ->
+                    fillColor color model.foregroundColor x y model.grid
+
+
+fillColor : Color -> Color -> Int -> Int -> Grid -> Grid
+fillColor fromColor toColor x y grid =
+    let
+        fill ( x, y ) ( visited, grid ) =
+            case Array2.get x y grid of
+                Nothing ->
+                    ( visited, grid )
+
+                Just c ->
+                    if Set.member ( x, y ) visited then
+                        ( visited, grid )
+                    else if c == fromColor then
+                        let
+                            state =
+                                ( Set.insert ( x, y ) visited, Array2.set x y toColor grid )
+
+                            neighbors =
+                                [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
+                        in
+                            List.foldl fill state neighbors
+                    else
+                        ( Set.insert ( x, y ) visited, grid )
+
+        ( _, nextGrid ) =
+            fill ( x, y ) ( Set.empty, grid )
+    in
+        nextGrid
 
 
 setMouseDown : Bool -> Model -> Model
@@ -196,7 +237,7 @@ view model =
             , viewBorders
             ]
         , viewModes model.mode
-        , viewBrushSelector model.brushColor model.brushes
+        , viewColorSelector model.foregroundColor model.colors
         , viewDownload
         ]
 
@@ -219,6 +260,7 @@ viewModes selectedMode =
         Html.div []
             [ menu Paint "Paint" "paint-brush"
             , menu Eraser "Eraser" "eraser"
+            , menu Bucket "Bucket" "shopping-basket"
             ]
 
 
@@ -291,30 +333,27 @@ viewGrid grid =
         Svg.g [] rects
 
 
-viewBrushSelector : Color -> List Color -> Html Msg
-viewBrushSelector selected brushes =
+viewColorSelector : Color -> List Color -> Html Msg
+viewColorSelector selected colors =
     let
-        viewBrush brush =
+        viewColor color =
             Html.div
-                [ HA.class "brush-selector__brush"
-                , HA.style [ ( "background-color", ColorUtil.toColorString brush ) ]
-                , HE.onClick <| SelectBrush brush
+                [ HA.class "color-selector__color"
+                , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
+                , HE.onClick <| SelectColor color
                 ]
                 []
 
-        viewBrushes =
-            List.map viewBrush brushes
-
         viewSelected =
-            viewBrush selected
+            viewColor selected
 
         separator =
-            Html.div [ HA.class "brush-selector__separator" ] []
+            Html.div [ HA.class "color-selector__separator" ] []
 
         views =
-            viewSelected :: separator :: viewBrushes
+            viewSelected :: separator :: List.map viewColor colors
     in
-        Html.div [ HA.class "brush-selector" ] views
+        Html.div [ HA.class "color-selector" ] views
 
 
 icon : String -> List (Html.Attribute msg) -> Html msg
