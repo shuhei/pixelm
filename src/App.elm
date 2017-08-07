@@ -357,21 +357,22 @@ viewColorSelector selected colors =
         Html.div [ HA.class "color-selector" ] views
 
 
-viewPalette : Grid -> Html Msg
-viewPalette grid =
+usedColors : Grid -> List Color
+usedColors grid =
     let
         putColor c used =
             Dict.insert (ColorUtil.toColorString c) c used
-
-        usedColors =
-            Array2.foldr putColor Dict.empty grid
-                |> Dict.values
-                |> List.filter (\x -> x /= ColorUtil.transparent)
-
-        views =
-            List.map viewColor usedColors
     in
-        Html.div [ HA.class "color-selector" ] views
+        Array2.foldr putColor Dict.empty grid
+            |> Dict.values
+            |> List.filter (\x -> x /= ColorUtil.transparent)
+
+
+viewPalette : Grid -> Html Msg
+viewPalette grid =
+    usedColors grid
+        |> List.map viewColor
+        |> Html.div [ HA.class "color-selector" ]
 
 
 icon : String -> List (Html.Attribute msg) -> Html msg
