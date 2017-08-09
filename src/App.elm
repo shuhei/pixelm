@@ -90,6 +90,11 @@ colors =
     ]
 
 
+emptyGrid : Grid
+emptyGrid =
+    makeGrid resolution resolution ColorUtil.transparent
+
+
 init : String -> ( Model, Cmd Msg )
 init path =
     let
@@ -112,6 +117,7 @@ type Msg
     = NoOp
     | SelectColor Color
     | SelectMode Mode
+    | ClearCanvas
     | Download
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
@@ -137,6 +143,11 @@ update msg model =
         Download ->
             ( model
             , download <| Array2.map Color.toRgb model.grid
+            )
+
+        ClearCanvas ->
+            ( { model | grid = emptyGrid }
+            , Cmd.none
             )
 
         MouseDownOnCanvas pos ->
@@ -237,7 +248,7 @@ view model =
         , HE.onMouseUp <| MouseUpOnContainer
         ]
         [ viewGrid model.grid
-        , viewModes model.mode
+        , viewMenus model.mode
         , viewColorSelector model.foregroundColor model.colors
         , viewPalette model.grid
         , viewDownload
@@ -266,25 +277,29 @@ viewGrid grid =
         ]
 
 
-viewModes : Mode -> Html Msg
-viewModes selectedMode =
+viewMenus : Mode -> Html Msg
+viewMenus selectedMode =
     let
-        menu mode label iconName =
+        menu selected msg label iconName =
             Html.a
                 [ HA.classList
                     [ ( "mode", True )
-                    , ( "mode--selected", mode == selectedMode )
+                    , ( "mode--selected", selected )
                     ]
                 , HA.href "#"
                 , HA.title label
-                , HE.onClick <| SelectMode mode
+                , HE.onClick msg
                 ]
                 [ icon iconName [] ]
+
+        modeMenu mode =
+            menu (mode == selectedMode) (SelectMode mode)
     in
         Html.div []
-            [ menu Paint "Paint" "paint-brush"
-            , menu Eraser "Eraser" "eraser"
-            , menu Bucket "Bucket" "shopping-basket"
+            [ modeMenu Paint "Paint" "paint-brush"
+            , modeMenu Eraser "Eraser" "eraser"
+            , modeMenu Bucket "Bucket" "shopping-basket"
+            , menu False ClearCanvas "Clear" "trash"
             ]
 
 
