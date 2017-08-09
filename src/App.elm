@@ -7,10 +7,10 @@ import Dict
 import Set
 import Svg exposing (Svg)
 import Svg.Attributes as SA
-import Svg.Events as SE
 import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
+import Events
 
 
 ---- CONSTANTS ----
@@ -113,9 +113,9 @@ type Msg
     | SelectColor Color
     | SelectMode Mode
     | Download
-    | MouseDownOnPixel Int Int
-    | MouseOverOnPixel Int Int
-    | MouseUpOnPixel Int Int
+    | MouseDownOnCanvas ( Int, Int )
+    | MouseMoveOnCanvas ( Int, Int )
+    | MouseUpOnCanvas ( Int, Int )
     | MouseDownOnContainer
     | MouseUpOnContainer
 
@@ -139,21 +139,21 @@ update msg model =
             , download <| Array2.map Color.toRgb model.grid
             )
 
-        MouseDownOnPixel x y ->
-            ( setMouseDown True { model | grid = updateGrid x y model }
+        MouseDownOnCanvas pos ->
+            ( setMouseDown True { model | grid = updateGrid pos model }
             , Cmd.none
             )
 
-        MouseOverOnPixel x y ->
+        MouseMoveOnCanvas pos ->
             if model.isMouseDown then
-                ( { model | grid = updateGrid x y model }
+                ( { model | grid = updateGrid pos model }
                 , Cmd.none
                 )
             else
                 ( model, Cmd.none )
 
-        MouseUpOnPixel x y ->
-            ( setMouseDown False { model | grid = updateGrid x y model }
+        MouseUpOnCanvas pos ->
+            ( setMouseDown False { model | grid = updateGrid pos model }
             , Cmd.none
             )
 
@@ -164,22 +164,29 @@ update msg model =
             ( setMouseDown False model, Cmd.none )
 
 
-updateGrid : Int -> Int -> Model -> Grid
-updateGrid x y model =
-    case model.mode of
-        Paint ->
-            Array2.set x y model.foregroundColor model.grid
+updateGrid : ( Int, Int ) -> Model -> Grid
+updateGrid ( x, y ) model =
+    let
+        col =
+            x // pixelSize
 
-        Eraser ->
-            Array2.set x y ColorUtil.transparent model.grid
+        row =
+            y // pixelSize
+    in
+        case model.mode of
+            Paint ->
+                Array2.set col row model.foregroundColor model.grid
 
-        Bucket ->
-            case Array2.get x y model.grid of
-                Nothing ->
-                    model.grid
+            Eraser ->
+                Array2.set col row ColorUtil.transparent model.grid
 
-                Just color ->
-                    fillColor color model.foregroundColor x y model.grid
+            Bucket ->
+                case Array2.get col row model.grid of
+                    Nothing ->
+                        model.grid
+
+                    Just color ->
+                        fillColor color model.foregroundColor col row model.grid
 
 
 fillColor : Color -> Color -> Int -> Int -> Grid -> Grid
@@ -229,18 +236,33 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
+        [ viewGrid model.grid
+        , viewModes model.mode
+        , viewColorSelector model.foregroundColor model.colors
+        , viewPalette model.grid
+        , viewDownload
+        ]
+
+
+viewGrid : Grid -> Html Msg
+viewGrid grid =
+    Html.div
+        [ HA.class "pixel-grid-container"
+        , HE.on "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
+        , HE.on "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
+        , HE.on "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas
+        , HE.on "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
+        , HE.on "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
+        , HE.on "touchend" <| Events.decodeTouchEvent MouseUpOnCanvas
+        ]
         [ Svg.svg
             [ SA.class "pixel-grid"
             , SA.width <| toString canvasSize
             , SA.height <| toString canvasSize
             ]
-            [ viewGrid model.grid
+            [ viewRects grid
             , viewBorders
             ]
-        , viewModes model.mode
-        , viewColorSelector model.foregroundColor model.colors
-        , viewPalette model.grid
-        , viewDownload
         ]
 
 
@@ -313,8 +335,8 @@ viewBorders =
             (List.map vertical ns ++ List.map horizontal ns)
 
 
-viewGrid : Grid -> Svg Msg
-viewGrid grid =
+viewRects : Grid -> Svg Msg
+viewRects grid =
     let
         makeRect col row pixel =
             Svg.rect
@@ -323,9 +345,6 @@ viewGrid grid =
                 , SA.x <| toString <| col * pixelSize
                 , SA.y <| toString <| row * pixelSize
                 , SA.fill <| ColorUtil.toColorString pixel
-                , SE.onMouseDown <| MouseDownOnPixel col row
-                , SE.onMouseOver <| MouseOverOnPixel col row
-                , SE.onMouseUp <| MouseUpOnPixel col row
                 ]
                 []
 

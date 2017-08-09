@@ -54,3 +54,12 @@ function downloadCanvas(canvas) {
   a.download = 'pixels.gif';
   a.click();
 }
+
+// Stop scroll on touch devices.
+setTimeout(function () {
+  var grid = document.querySelector('.pixel-grid-container');
+  grid.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+}, 500);
