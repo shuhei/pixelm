@@ -1,0 +1,31 @@
+{
+  "name": "pixelm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "This project is bootstrapped with [Create Elm App](https://github.com/halfzebra/create-elm-app).",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "start": "elm-app start",
+    "build": "elm-app build",
+    "test": "elm-app test",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shuhei/pixelm.git"
+  },
+  "author": "Shuhei Kagawa <shuhei.kagawa@gmail.com>",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/shuhei/pixelm/issues"
+  },
+  "homepage": "https://github.com/shuhei/pixelm#readme",
+  "devDependencies": {
+    "create-elm-app": "^1.2.2",
+    "gh-pages": "^1.0.0"
+  }
+}
