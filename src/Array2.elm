@@ -70,3 +70,26 @@ foldl f =
 foldr : (a -> b -> b) -> b -> Array2 a -> b
 foldr f =
     Array.foldr (\xs prev -> Array.foldr f prev xs)
+
+
+move : Int -> Int -> a -> Array2 a -> Array2 a
+move dx dy default arr2 =
+    let
+        len =
+            Array.get 0 arr2
+                |> Maybe.map Array.length
+                |> Maybe.withDefault 0
+
+        moveCol row x _ =
+            Array.get (x - dx) row
+                |> Maybe.withDefault default
+
+        moveRow y _ =
+            case Array.get (y - dy) arr2 of
+                Nothing ->
+                    Array.repeat len default
+
+                Just row ->
+                    Array.indexedMap (moveCol row) row
+    in
+        Array.indexedMap moveRow arr2

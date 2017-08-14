@@ -39,6 +39,7 @@ type Mode
     = Paint
     | Eraser
     | Bucket
+    | Move
 
 
 type alias Grid =
@@ -48,6 +49,7 @@ type alias Grid =
 type alias Model =
     { mode : Mode
     , isMouseDown : Bool
+    , previousModeDown : Maybe ( Int, Int )
     , foregroundColor : Color
     , colors : List Color
     , grid : Grid
@@ -101,6 +103,7 @@ init path =
         model =
             { mode = Paint
             , isMouseDown = False
+            , previousModeDown = Nothing
             , foregroundColor = Color.black
             , colors = colors
             , grid = makeGrid resolution resolution ColorUtil.transparent
@@ -151,53 +154,90 @@ update msg model =
             )
 
         MouseDownOnCanvas pos ->
-            ( setMouseDown True { model | grid = updateGrid pos model }
-            , Cmd.none
-            )
-
-        MouseMoveOnCanvas pos ->
-            if model.isMouseDown then
-                ( { model | grid = updateGrid pos model }
+            let
+                pixelPos =
+                    getPixelPos pos
+            in
+                ( { model
+                    | grid = updateGrid pixelPos model
+                    , isMouseDown = True
+                    , previousModeDown = Just pixelPos
+                  }
                 , Cmd.none
                 )
-            else
-                ( model, Cmd.none )
+
+        MouseMoveOnCanvas pos ->
+            let
+                pixelPos =
+                    getPixelPos pos
+            in
+                if model.isMouseDown then
+                    ( { model
+                        | grid = updateGrid pixelPos model
+                        , previousModeDown = Just pixelPos
+                      }
+                    , Cmd.none
+                    )
+                else
+                    ( model, Cmd.none )
 
         MouseUpOnCanvas pos ->
-            ( setMouseDown False { model | grid = updateGrid pos model }
+            let
+                pixelPos =
+                    getPixelPos pos
+            in
+                ( { model
+                    | grid = updateGrid pixelPos model
+                    , isMouseDown = False
+                    , previousModeDown = Nothing
+                  }
+                , Cmd.none
+                )
+
+        MouseDownOnContainer ->
+            ( { model | isMouseDown = True }
             , Cmd.none
             )
 
-        MouseDownOnContainer ->
-            ( setMouseDown True model, Cmd.none )
-
         MouseUpOnContainer ->
-            ( setMouseDown False model, Cmd.none )
+            ( { model | isMouseDown = False, previousModeDown = Nothing }
+            , Cmd.none
+            )
+
+
+getPixelPos : ( Int, Int ) -> ( Int, Int )
+getPixelPos ( x, y ) =
+    ( x // pixelSize, y // pixelSize )
 
 
 updateGrid : ( Int, Int ) -> Model -> Grid
-updateGrid ( x, y ) model =
-    let
-        col =
-            x // pixelSize
+updateGrid ( col, row ) model =
+    case model.mode of
+        Paint ->
+            Array2.set col row model.foregroundColor model.grid
 
-        row =
-            y // pixelSize
-    in
-        case model.mode of
-            Paint ->
-                Array2.set col row model.foregroundColor model.grid
+        Eraser ->
+            Array2.set col row ColorUtil.transparent model.grid
 
-            Eraser ->
-                Array2.set col row ColorUtil.transparent model.grid
+        Bucket ->
+            case Array2.get col row model.grid of
+                Nothing ->
+                    model.grid
 
-            Bucket ->
-                case Array2.get col row model.grid of
-                    Nothing ->
+                Just color ->
+                    fillColor color model.foregroundColor col row model.grid
+
+        Move ->
+            case model.previousModeDown of
+                Nothing ->
+                    model.grid
+
+                Just ( prevCol, prevRow ) ->
+                    Array2.move
+                        (col - prevCol)
+                        (row - prevRow)
+                        ColorUtil.transparent
                         model.grid
-
-                    Just color ->
-                        fillColor color model.foregroundColor col row model.grid
 
 
 fillColor : Color -> Color -> Int -> Int -> Grid -> Grid
@@ -299,6 +339,7 @@ viewMenus selectedMode =
             [ modeMenu Paint "Paint" "paint-brush"
             , modeMenu Eraser "Eraser" "eraser"
             , modeMenu Bucket "Bucket" "shopping-basket"
+            , modeMenu Move "Move" "arrows"
             , menu False ClearCanvas "Clear" "trash"
             ]
 
