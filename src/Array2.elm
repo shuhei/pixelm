@@ -1,6 +1,7 @@
 module Array2 exposing (..)
 
 import Array exposing (Array)
+import Set
 
 
 type alias Array2 a =
@@ -93,3 +94,35 @@ move dx dy default arr2 =
                     Array.indexedMap (moveCol row) row
     in
         Array.indexedMap moveRow arr2
+
+
+fill : Int -> Int -> a -> Array2 a -> Array2 a
+fill x y to arr2 =
+    case get x y arr2 of
+        Nothing ->
+            arr2
+
+        Just fromColor ->
+            let
+                fill fromColor ( x, y ) ( visited, grid ) =
+                    case get x y grid of
+                        Nothing ->
+                            ( visited, grid )
+
+                        Just c ->
+                            if Set.member ( x, y ) visited then
+                                ( visited, grid )
+                            else if c == fromColor then
+                                let
+                                    state =
+                                        ( Set.insert ( x, y ) visited, set x y to grid )
+
+                                    neighbors =
+                                        [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
+                                in
+                                    List.foldl (fill fromColor) state neighbors
+                            else
+                                ( Set.insert ( x, y ) visited, grid )
+            in
+                fill fromColor ( x, y ) ( Set.empty, arr2 )
+                    |> Tuple.second

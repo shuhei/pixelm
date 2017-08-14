@@ -4,7 +4,6 @@ import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Dict
-import Set
 import Svg exposing (Svg)
 import Svg.Attributes as SA
 import Array2 exposing (Array2)
@@ -227,12 +226,7 @@ updateGrid ( col, row ) model =
             Array2.set col row ColorUtil.transparent model.grid
 
         Bucket ->
-            case Array2.get col row model.grid of
-                Nothing ->
-                    model.grid
-
-                Just color ->
-                    fillColor color model.foregroundColor col row model.grid
+            Array2.fill col row model.foregroundColor model.grid
 
         Move ->
             case model.previousModeDown of
@@ -245,35 +239,6 @@ updateGrid ( col, row ) model =
                         (row - prevRow)
                         ColorUtil.transparent
                         model.grid
-
-
-fillColor : Color -> Color -> Int -> Int -> Grid -> Grid
-fillColor fromColor toColor x y grid =
-    let
-        fill ( x, y ) ( visited, grid ) =
-            case Array2.get x y grid of
-                Nothing ->
-                    ( visited, grid )
-
-                Just c ->
-                    if Set.member ( x, y ) visited then
-                        ( visited, grid )
-                    else if c == fromColor then
-                        let
-                            state =
-                                ( Set.insert ( x, y ) visited, Array2.set x y toColor grid )
-
-                            neighbors =
-                                [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
-                        in
-                            List.foldl fill state neighbors
-                    else
-                        ( Set.insert ( x, y ) visited, grid )
-
-        ( _, nextGrid ) =
-            fill ( x, y ) ( Set.empty, grid )
-    in
-        nextGrid
 
 
 setMouseDown : Bool -> Model -> Model
