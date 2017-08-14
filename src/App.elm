@@ -139,7 +139,14 @@ update msg model =
             ( { model | mode = mode }, Cmd.none )
 
         SelectColor color ->
-            ( { model | foregroundColor = color }
+            ( { model
+                | foregroundColor = color
+                , mode =
+                    if model.mode == Bucket then
+                        Bucket
+                    else
+                        Paint
+              }
             , Cmd.none
             )
 
