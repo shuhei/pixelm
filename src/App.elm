@@ -48,7 +48,7 @@ type alias Grid =
 type alias Model =
     { mode : Mode
     , isMouseDown : Bool
-    , previousModeDown : Maybe ( Int, Int )
+    , previousMouseDown : Maybe ( Int, Int )
     , foregroundColor : Color
     , colors : List Color
     , grid : Grid
@@ -102,7 +102,7 @@ init path =
         model =
             { mode = Paint
             , isMouseDown = False
-            , previousModeDown = Nothing
+            , previousMouseDown = Nothing
             , foregroundColor = Color.black
             , colors = colors
             , grid = makeGrid resolution resolution ColorUtil.transparent
@@ -167,7 +167,7 @@ update msg model =
                 ( { model
                     | grid = updateGrid pixelPos model
                     , isMouseDown = True
-                    , previousModeDown = Just pixelPos
+                    , previousMouseDown = Just pixelPos
                   }
                 , Cmd.none
                 )
@@ -180,7 +180,7 @@ update msg model =
                 if model.isMouseDown then
                     ( { model
                         | grid = updateGrid pixelPos model
-                        , previousModeDown = Just pixelPos
+                        , previousMouseDown = Just pixelPos
                       }
                     , Cmd.none
                     )
@@ -195,7 +195,7 @@ update msg model =
                 ( { model
                     | grid = updateGrid pixelPos model
                     , isMouseDown = False
-                    , previousModeDown = Nothing
+                    , previousMouseDown = Nothing
                   }
                 , Cmd.none
                 )
@@ -206,7 +206,7 @@ update msg model =
             )
 
         MouseUpOnContainer ->
-            ( { model | isMouseDown = False, previousModeDown = Nothing }
+            ( { model | isMouseDown = False, previousMouseDown = Nothing }
             , Cmd.none
             )
 
@@ -229,7 +229,7 @@ updateGrid ( col, row ) model =
             Array2.fill col row model.foregroundColor model.grid
 
         Move ->
-            case model.previousModeDown of
+            case model.previousMouseDown of
                 Nothing ->
                     model.grid
 
@@ -239,11 +239,6 @@ updateGrid ( col, row ) model =
                         (row - prevRow)
                         ColorUtil.transparent
                         model.grid
-
-
-setMouseDown : Bool -> Model -> Model
-setMouseDown mouseDown model =
-    { model | isMouseDown = mouseDown }
 
 
 port download : Array2 RGBA -> Cmd msg
