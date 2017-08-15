@@ -98,31 +98,29 @@ move dx dy default arr2 =
 
 fill : Int -> Int -> a -> Array2 a -> Array2 a
 fill x y to arr2 =
-    case get x y arr2 of
-        Nothing ->
-            arr2
+    let
+        fillRegion a ( x, y ) ( visited, grid ) =
+            case get x y grid of
+                Nothing ->
+                    ( visited, grid )
 
-        Just fromColor ->
-            let
-                fill fromColor ( x, y ) ( visited, grid ) =
-                    case get x y grid of
-                        Nothing ->
-                            ( visited, grid )
+                Just c ->
+                    if Set.member ( x, y ) visited then
+                        ( visited, grid )
+                    else if c == a then
+                        let
+                            state =
+                                ( Set.insert ( x, y ) visited, set x y to grid )
 
-                        Just c ->
-                            if Set.member ( x, y ) visited then
-                                ( visited, grid )
-                            else if c == fromColor then
-                                let
-                                    state =
-                                        ( Set.insert ( x, y ) visited, set x y to grid )
+                            neighbors =
+                                [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
+                        in
+                            List.foldl (fillRegion a) state neighbors
+                    else
+                        ( Set.insert ( x, y ) visited, grid )
 
-                                    neighbors =
-                                        [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
-                                in
-                                    List.foldl (fill fromColor) state neighbors
-                            else
-                                ( Set.insert ( x, y ) visited, grid )
-            in
-                fill fromColor ( x, y ) ( Set.empty, arr2 )
-                    |> Tuple.second
+        start a =
+            fillRegion a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second
+    in
+        Maybe.map start (get x y arr2)
+            |> Maybe.withDefault arr2

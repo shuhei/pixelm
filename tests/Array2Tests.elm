@@ -62,4 +62,20 @@ all =
                         , [ ( 10, 10 ), ( 10, 10 ) ]
                         , [ ( 10, 10 ), ( 0, 0 ) ]
                         ]
+        , test "fill" <|
+            \() ->
+                let
+                    arr2 =
+                        Array2.fromList2
+                            [ [ "a", "a", "a" ]
+                            , [ "a", "b", "a" ]
+                            , [ "b", "b", "a" ]
+                            ]
+                in
+                    Expect.equal (Array2.fill 0 1 "c" arr2) <|
+                        Array2.fromList2
+                            [ [ "c", "c", "c" ]
+                            , [ "c", "b", "c" ]
+                            , [ "b", "b", "c" ]
+                            ]
         ]
