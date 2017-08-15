@@ -10,6 +10,7 @@ import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
 import Events
+import Json.Decode as Json
 
 
 ---- CONSTANTS ----
@@ -51,6 +52,7 @@ type alias Model =
     , previousMouseDown : Maybe ( Int, Int )
     , foregroundColor : Color
     , colors : List Color
+    , previousGrid : Maybe Grid
     , grid : Grid
     }
 
@@ -58,6 +60,11 @@ type alias Model =
 makeGrid : Int -> Int -> Color -> Grid
 makeGrid cols rows color =
     Array2.initialize cols rows (\x y -> color)
+
+
+emptyGrid : Grid
+emptyGrid =
+    makeGrid resolution resolution ColorUtil.transparent
 
 
 colors : List Color
@@ -91,11 +98,6 @@ colors =
     ]
 
 
-emptyGrid : Grid
-emptyGrid =
-    makeGrid resolution resolution ColorUtil.transparent
-
-
 init : String -> ( Model, Cmd Msg )
 init path =
     let
@@ -105,7 +107,8 @@ init path =
             , previousMouseDown = Nothing
             , foregroundColor = Color.black
             , colors = colors
-            , grid = makeGrid resolution resolution ColorUtil.transparent
+            , previousGrid = Nothing
+            , grid = emptyGrid
             }
     in
         ( model, Cmd.none )
@@ -120,6 +123,7 @@ type Msg
     | SelectColor Color
     | SelectMode Mode
     | ClearCanvas
+    | Undo
     | Download
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
@@ -149,13 +153,19 @@ update msg model =
             , Cmd.none
             )
 
-        Download ->
-            ( model
-            , download <| Array2.map Color.toRgb model.grid
+        ClearCanvas ->
+            ( { model
+                | previousGrid = Just model.grid
+                , grid = emptyGrid
+              }
+            , Cmd.none
             )
 
-        ClearCanvas ->
-            ( { model | grid = emptyGrid }
+        Undo ->
+            ( { model
+                | previousGrid = Nothing
+                , grid = Maybe.withDefault model.grid model.previousGrid
+              }
             , Cmd.none
             )
 
@@ -165,7 +175,8 @@ update msg model =
                     getPixelPos pos
             in
                 ( { model
-                    | grid = updateGrid pixelPos model
+                    | previousGrid = Just model.grid
+                    , grid = updateGrid pixelPos model
                     , isMouseDown = True
                     , previousMouseDown = Just pixelPos
                   }
@@ -201,13 +212,21 @@ update msg model =
                 )
 
         MouseDownOnContainer ->
-            ( { model | isMouseDown = True }
+            ( { model
+                | previousGrid = Just model.grid
+                , isMouseDown = True
+              }
             , Cmd.none
             )
 
         MouseUpOnContainer ->
             ( { model | isMouseDown = False, previousMouseDown = Nothing }
             , Cmd.none
+            )
+
+        Download ->
+            ( model
+            , download <| Array2.map Color.toRgb model.grid
             )
 
 
@@ -266,12 +285,12 @@ viewGrid : Grid -> Html Msg
 viewGrid grid =
     Html.div
         [ HA.class "pixel-grid-container"
-        , HE.on "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
-        , HE.on "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
-        , HE.on "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas
-        , HE.on "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
-        , HE.on "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
-        , HE.on "touchend" <| Events.decodeTouchEvent MouseUpOnCanvas
+        , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
+        , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
+        , Events.onWithStopAndPrevent "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas
+        , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
+        , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
+        , Events.onWithStopAndPrevent "touchend" <| Events.decodeTouchEvent MouseUpOnCanvas
         ]
         [ Svg.svg
             [ SA.class "pixel-grid"
@@ -296,6 +315,7 @@ viewMenus selectedMode =
                 , HA.href "#"
                 , HA.title label
                 , HE.onClick msg
+                , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
                 ]
                 [ icon iconName [] ]
 
@@ -308,6 +328,7 @@ viewMenus selectedMode =
             , modeMenu Bucket "Bucket" "shopping-basket"
             , modeMenu Move "Move" "arrows"
             , menu False ClearCanvas "Clear" "trash"
+            , menu False Undo "Undo" "undo"
             ]
 
 

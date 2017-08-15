@@ -1,6 +1,8 @@
-module Events exposing (decodeMouseEvent, decodeTouchEvent)
+module Events exposing (decodeMouseEvent, decodeTouchEvent, onWithStopAndPrevent)
 
 import Json.Decode as Json
+import Html
+import Html.Events as HE
 
 
 minusPos : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
@@ -50,3 +52,15 @@ decodeMouseEvent tagger =
     in
         Json.map tagger <|
             Json.map2 minusPos decodeClientPos decodeTarget
+
+
+stopAndPrevent : HE.Options
+stopAndPrevent =
+    { stopPropagation = True
+    , preventDefault = True
+    }
+
+
+onWithStopAndPrevent : String -> Json.Decoder msg -> Html.Attribute msg
+onWithStopAndPrevent eventName decoder =
+    HE.onWithOptions eventName stopAndPrevent decoder
