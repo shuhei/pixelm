@@ -2,6 +2,7 @@ port module Main exposing (..)
 
 import Array2Tests
 import ColorUtilTests
+import HistoryTests
 import Test
 import Test.Runner.Node exposing (run)
 import Json.Encode exposing (Value)
@@ -14,6 +15,7 @@ main =
             Test.concat
                 [ Array2Tests.all
                 , ColorUtilTests.all
+                , HistoryTests.all
                 ]
     in
         run emit tests

@@ -1,16 +1,17 @@
 port module App exposing (..)
 
+import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Dict
+import Json.Decode as Json
 import Svg exposing (Svg)
 import Svg.Attributes as SA
 import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
 import Events
-import Json.Decode as Json
+import History exposing (History)
 
 
 ---- CONSTANTS ----
@@ -52,7 +53,7 @@ type alias Model =
     , previousMouseDown : Maybe ( Int, Int )
     , foregroundColor : Color
     , colors : List Color
-    , previousGrid : Maybe Grid
+    , history : History Grid
     , grid : Grid
     }
 
@@ -107,7 +108,7 @@ init path =
             , previousMouseDown = Nothing
             , foregroundColor = Color.black
             , colors = colors
-            , previousGrid = Nothing
+            , history = History.initialize 20
             , grid = emptyGrid
             }
     in
@@ -155,19 +156,23 @@ update msg model =
 
         ClearCanvas ->
             ( { model
-                | previousGrid = Just model.grid
+                | history = History.push model.grid model.history
                 , grid = emptyGrid
               }
             , Cmd.none
             )
 
         Undo ->
-            ( { model
-                | previousGrid = Nothing
-                , grid = Maybe.withDefault model.grid model.previousGrid
-              }
-            , Cmd.none
-            )
+            let
+                ( grid, history ) =
+                    History.pop model.history
+            in
+                ( { model
+                    | history = history
+                    , grid = Maybe.withDefault model.grid grid
+                  }
+                , Cmd.none
+                )
 
         MouseDownOnCanvas pos ->
             let
@@ -175,7 +180,7 @@ update msg model =
                     getPixelPos pos
             in
                 ( { model
-                    | previousGrid = Just model.grid
+                    | history = History.push model.grid model.history
                     , grid = updateGrid pixelPos model
                     , isMouseDown = True
                     , previousMouseDown = Just pixelPos
@@ -213,7 +218,7 @@ update msg model =
 
         MouseDownOnContainer ->
             ( { model
-                | previousGrid = Just model.grid
+                | history = History.push model.grid model.history
                 , isMouseDown = True
               }
             , Cmd.none
