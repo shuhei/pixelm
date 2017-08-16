@@ -4,15 +4,14 @@ var Elm = require('./App.elm');
 
 // TOOD: Share these with Elm.
 var pixelSize = 20;
-var resolution = 16;
 
 var root = document.getElementById('root');
 
 var app = Elm.App.embed(root, logoPath);
 app.ports.download.subscribe(function (grid) {
   var canvas = document.getElementById('canvas');
-  canvas.width = pixelSize * resolution;
-  canvas.height = pixelSize * resolution;
+  canvas.width = grid.colSize * pixelSize;
+  canvas.height = grid.rowSize * pixelSize;
 
   drawInCanvas(canvas, grid);
   downloadCanvas(canvas);
@@ -22,15 +21,12 @@ function drawInCanvas(canvas, grid) {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  for (var row = 0; row < grid.length; row++) {
-    var cols = grid[row];
-    for (var col = 0; col < cols.length; col++) {
-      var rgba = cols[col];
-      var x = col * pixelSize;
-      var y = row * pixelSize;
-      ctx.fillStyle = fillColor(rgba);
-      ctx.fillRect(x, y, pixelSize, pixelSize);
-    }
+  for (var i = 0; i < grid.data.length; i++) {
+    var pixel = grid.data[i];
+    var x = pixel[0][0] * pixelSize;
+    var y = pixel[0][1] * pixelSize;
+    ctx.fillStyle = fillColor(pixel[1]);
+    ctx.fillRect(x, y, pixelSize, pixelSize);
   }
 }
 
