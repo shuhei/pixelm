@@ -99,25 +99,25 @@ move dx dy default arr2 =
 fill : Int -> Int -> a -> Array2 a -> Array2 a
 fill x y to arr2 =
     let
-        fillRegion a ( x, y ) ( visited, grid ) =
-            case get x y grid of
+        fillRegion a ( x, y ) ( visited, arr2 ) =
+            case get x y arr2 of
                 Nothing ->
-                    ( visited, grid )
+                    ( visited, arr2 )
 
                 Just c ->
                     if Set.member ( x, y ) visited then
-                        ( visited, grid )
+                        ( visited, arr2 )
                     else if c == a then
                         let
                             state =
-                                ( Set.insert ( x, y ) visited, set x y to grid )
+                                ( Set.insert ( x, y ) visited, set x y to arr2 )
 
                             neighbors =
                                 [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
                         in
                             List.foldl (fillRegion a) state neighbors
                     else
-                        ( Set.insert ( x, y ) visited, grid )
+                        ( Set.insert ( x, y ) visited, arr2 )
 
         start a =
             fillRegion a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second

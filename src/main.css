@@ -21,7 +21,7 @@ img {
 .pixel-grid-container {
   width: 320px;
   height: 320px;
-  margin: 0 auto;
+  margin: 20px auto 20px;
   -webkit-tap-highlight-color: transparent;
 }
 
