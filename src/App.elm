@@ -58,14 +58,9 @@ type alias Model =
     }
 
 
-makeGrid : Int -> Int -> Color -> Grid
-makeGrid cols rows color =
-    Array2.initialize cols rows (\x y -> color)
-
-
 emptyGrid : Grid
 emptyGrid =
-    makeGrid resolution resolution ColorUtil.transparent
+    Array2.initialize resolution resolution
 
 
 colors : List Color
@@ -231,7 +226,11 @@ update msg model =
 
         Download ->
             ( model
-            , download <| Array2.map Color.toRgb model.grid
+            , download
+                { colSize = model.grid.colSize
+                , rowSize = model.grid.rowSize
+                , data = Array2.toList <| Array2.map Color.toRgb model.grid
+                }
             )
 
 
@@ -261,11 +260,17 @@ updateGrid ( col, row ) model =
                     Array2.move
                         (col - prevCol)
                         (row - prevRow)
-                        ColorUtil.transparent
                         model.grid
 
 
-port download : Array2 RGBA -> Cmd msg
+type alias SerializedGrid =
+    { rowSize : Int
+    , colSize : Int
+    , data : List ( ( Int, Int ), RGBA )
+    }
+
+
+port download : SerializedGrid -> Cmd msg
 
 
 
@@ -398,7 +403,9 @@ viewRects grid =
                 []
 
         rects =
-            Array2.toList <| Array2.indexedMap makeRect grid
+            Array2.indexedMap makeRect grid
+                |> Array2.toList
+                |> List.map Tuple.second
     in
         Svg.g [] rects
 
