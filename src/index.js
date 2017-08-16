@@ -10,13 +10,61 @@ var root = document.getElementById('root');
 
 var app = Elm.App.embed(root, logoPath);
 app.ports.download.subscribe(function (grid) {
+  exportSvg(grid);
+  exportGif(grid);
+});
+
+function exportSvg(grid) {
+  var rects = grid.map(function (row, y) {
+    return row.map(function (rgba, x) {
+      return buildRect(x, y, rgba);
+    }).join('');
+  }).join('');
+  var size = pixelSize * resolution;
+  var svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="',
+    size,
+    '" height="',
+    size,
+    '" viewBox="0 0 ',
+    size,
+    ' ',
+    size,
+    '">',
+    rects,
+    '</svg>'
+  ].join('');
+  var url = 'data:image/svg+xml;utf8,' + svg;
+  downloadData('pixels.svg', url);
+}
+
+function buildRect(x, y, rgba) {
+  var xx = x * pixelSize;
+  var yy = y * pixelSize;
+  var color = fillColor(rgba);
+  return [
+    '<rect width="',
+    pixelSize,
+    '" height="',
+    pixelSize,
+    '" x="',
+    xx,
+    '" y="',
+    yy,
+    '" fill="',
+    color,
+    '" />'
+  ].join('');
+}
+
+function exportGif(grid) {
   var canvas = document.getElementById('canvas');
   canvas.width = pixelSize * resolution;
   canvas.height = pixelSize * resolution;
 
   drawInCanvas(canvas, grid);
-  downloadCanvas(canvas);
-});
+  downloadData('pixels.gif', canvas.toDataURL('image/gif'));
+}
 
 function drawInCanvas(canvas, grid) {
   var ctx = canvas.getContext('2d');
@@ -48,10 +96,10 @@ function fillColor(rgba) {
   ].join('');
 }
 
-function downloadCanvas(canvas) {
+function downloadData(filename, url) {
   var a = document.createElement('a');
-  a.href = canvas.toDataURL('image/gif');
-  a.download = 'pixels.gif';
+  a.href = url;
+  a.download = filename;
   a.target = '_blank';
   a.click();
 }
