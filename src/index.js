@@ -1,6 +1,4 @@
 require('./main.css');
-var pencilPath = require('./pencil.svg');
-var eraserPath = require('./eraser.svg');
 var Elm = require('./App.elm');
 
 // TOOD: Share these with Elm.
@@ -10,8 +8,9 @@ var resolution = 16;
 var root = document.getElementById('root');
 
 var app = Elm.App.embed(root, {
-  pencil: pencilPath,
-  eraser: eraserPath
+  pencil: require('./pencil.svg'),
+  eraser: require('./eraser.svg'),
+  bucket: require('./bucket.svg')
 });
 app.ports.download.subscribe(function (grid) {
   exportSvg(grid);

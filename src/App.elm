@@ -50,6 +50,7 @@ type alias Grid =
 type alias ImagePaths =
     { pencil : String
     , eraser : String
+    , bucket : String
     }
 
 
@@ -338,7 +339,7 @@ viewMenus selectedMode images =
         Html.div [ HA.class "menu" ]
             [ modeMenu Paint "Paint" <| svgIcon images.pencil
             , modeMenu Eraser "Eraser" <| svgIcon images.eraser
-            , modeMenu Bucket "Bucket" <| faIcon "shopping-basket"
+            , modeMenu Bucket "Bucket" <| svgIcon images.bucket
             , modeMenu Move "Move" <| faIcon "arrows"
             , menu False ClearCanvas "Clear" <| faIcon "trash"
             , menu False Undo "Undo" <| faIcon "undo"
