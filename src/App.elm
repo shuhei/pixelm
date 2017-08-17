@@ -291,7 +291,6 @@ view model =
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors
         , viewPalette model.grid
-        , viewDownload
         ]
 
 
@@ -343,19 +342,8 @@ viewMenus selectedMode images =
             , modeMenu Move "Move" <| faIcon "arrows"
             , menu False ClearCanvas "Clear" <| faIcon "trash"
             , menu False Undo "Undo" <| faIcon "undo"
+            , menu False Download "Download" <| faIcon "download"
             ]
-
-
-viewDownload : Html Msg
-viewDownload =
-    Html.div []
-        [ Html.a
-            [ HA.href "#"
-            , HA.title "Download"
-            , HE.onClick Download
-            ]
-            [ faIcon "download" ]
-        ]
 
 
 viewBorders : Svg msg
