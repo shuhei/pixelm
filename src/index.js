@@ -10,7 +10,11 @@ var root = document.getElementById('root');
 var app = Elm.App.embed(root, {
   pencil: require('./pencil.svg'),
   eraser: require('./eraser.svg'),
-  bucket: require('./bucket.svg')
+  bucket: require('./bucket.svg'),
+  move: require('./move.svg'),
+  trash: require('./trash.svg'),
+  undo: require('./undo.svg'),
+  download: require('./download.svg')
 });
 app.ports.download.subscribe(function (grid) {
   exportSvg(grid);

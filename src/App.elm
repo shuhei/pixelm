@@ -51,6 +51,10 @@ type alias ImagePaths =
     { pencil : String
     , eraser : String
     , bucket : String
+    , move : String
+    , trash : String
+    , undo : String
+    , download : String
     }
 
 
@@ -339,10 +343,10 @@ viewMenus selectedMode images =
             [ modeMenu Paint "Paint" <| svgIcon images.pencil
             , modeMenu Eraser "Eraser" <| svgIcon images.eraser
             , modeMenu Bucket "Bucket" <| svgIcon images.bucket
-            , modeMenu Move "Move" <| faIcon "arrows"
-            , menu False ClearCanvas "Clear" <| faIcon "trash"
-            , menu False Undo "Undo" <| faIcon "undo"
-            , menu False Download "Download" <| faIcon "download"
+            , modeMenu Move "Move" <| svgIcon images.move
+            , menu False ClearCanvas "Clear" <| svgIcon images.trash
+            , menu False Undo "Undo" <| svgIcon images.undo
+            , menu False Download "Download" <| svgIcon images.download
             ]
 
 
