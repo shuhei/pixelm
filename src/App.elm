@@ -47,6 +47,12 @@ type alias Grid =
     Array2 Color
 
 
+type alias ImagePaths =
+    { pencil : String
+    , eraser : String
+    }
+
+
 type alias Model =
     { mode : Mode
     , isMouseDown : Bool
@@ -55,6 +61,7 @@ type alias Model =
     , colors : List Color
     , history : History Grid
     , grid : Grid
+    , images : ImagePaths
     }
 
 
@@ -99,8 +106,8 @@ colors =
     ]
 
 
-init : String -> ( Model, Cmd Msg )
-init path =
+init : ImagePaths -> ( Model, Cmd Msg )
+init flags =
     let
         model =
             { mode = Paint
@@ -110,6 +117,7 @@ init path =
             , colors = colors
             , history = History.initialize 20
             , grid = emptyGrid
+            , images = flags
             }
     in
         ( model, Cmd.none )
@@ -279,7 +287,7 @@ view model =
         , HE.onMouseUp <| MouseUpOnContainer
         ]
         [ viewGrid model.grid
-        , viewMenus model.mode
+        , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors
         , viewPalette model.grid
         , viewDownload
@@ -308,10 +316,10 @@ viewGrid grid =
         ]
 
 
-viewMenus : Mode -> Html Msg
-viewMenus selectedMode =
+viewMenus : Mode -> ImagePaths -> Html Msg
+viewMenus selectedMode images =
     let
-        menu selected msg label iconName =
+        menu selected msg label content =
             Html.a
                 [ HA.classList
                     [ ( "mode", True )
@@ -322,18 +330,18 @@ viewMenus selectedMode =
                 , HE.onClick msg
                 , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
                 ]
-                [ icon iconName [] ]
+                [ content ]
 
-        modeMenu mode =
-            menu (mode == selectedMode) (SelectMode mode)
+        modeMenu mode content =
+            menu (mode == selectedMode) (SelectMode mode) content
     in
-        Html.div []
-            [ modeMenu Paint "Paint" "paint-brush"
-            , modeMenu Eraser "Eraser" "eraser"
-            , modeMenu Bucket "Bucket" "shopping-basket"
-            , modeMenu Move "Move" "arrows"
-            , menu False ClearCanvas "Clear" "trash"
-            , menu False Undo "Undo" "undo"
+        Html.div [ HA.class "menu" ]
+            [ modeMenu Paint "Paint" <| svgIcon images.pencil
+            , modeMenu Eraser "Eraser" <| svgIcon images.eraser
+            , modeMenu Bucket "Bucket" <| faIcon "shopping-basket"
+            , modeMenu Move "Move" <| faIcon "arrows"
+            , menu False ClearCanvas "Clear" <| faIcon "trash"
+            , menu False Undo "Undo" <| faIcon "undo"
             ]
 
 
@@ -345,7 +353,7 @@ viewDownload =
             , HA.title "Download"
             , HE.onClick Download
             ]
-            [ icon "download" [] ]
+            [ faIcon "download" ]
         ]
 
 
@@ -443,10 +451,19 @@ viewPalette grid =
         |> Html.div [ HA.class "color-selector" ]
 
 
-icon : String -> List (Html.Attribute msg) -> Html msg
-icon name attrs =
+faIcon : String -> Html msg
+faIcon name =
     Html.i
-        ((HA.class <| "fa fa-" ++ name) :: attrs)
+        [ (HA.class <| "fa fa-" ++ name) ]
+        []
+
+
+svgIcon : String -> Html msg
+svgIcon path =
+    Html.img
+        [ HA.src path
+        , HA.width 32
+        ]
         []
 
 
@@ -454,7 +471,7 @@ icon name attrs =
 ---- PROGRAM ----
 
 
-main : Program String Model Msg
+main : Program ImagePaths Model Msg
 main =
     Html.programWithFlags
         { view = view
