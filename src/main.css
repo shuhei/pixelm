@@ -56,3 +56,10 @@ body {
   font-size: 28px;
   width: 32px;
 }
+
+.frame-list {
+}
+
+.frame {
+  border: 2px solid #ccc;
+}

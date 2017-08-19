@@ -325,6 +325,7 @@ view model =
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors
         , viewPalette model.frames.current
+        , viewFrames model.frames
         ]
 
 
@@ -348,40 +349,10 @@ viewGrid grid =
             , SA.width <| toString canvasSize
             , SA.height <| toString canvasSize
             ]
-            [ viewRects grid
+            [ viewRects pixelSize grid
             , viewBorders
             ]
         ]
-
-
-viewMenus : Mode -> ImagePaths -> Html Msg
-viewMenus selectedMode images =
-    let
-        menu selected msg label content =
-            Html.a
-                [ HA.classList
-                    [ ( "mode", True )
-                    , ( "mode--selected", selected )
-                    ]
-                , HA.href "#"
-                , HA.title label
-                , HE.onClick msg
-                , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
-                ]
-                [ content ]
-
-        modeMenu mode content =
-            menu (mode == selectedMode) (SelectMode mode) content
-    in
-        Html.div [ HA.class "menu" ]
-            [ modeMenu Paint "Paint" <| svgIcon images.pencil
-            , modeMenu Eraser "Eraser" <| svgIcon images.eraser
-            , modeMenu Bucket "Bucket" <| svgIcon images.bucket
-            , modeMenu Move "Move" <| svgIcon images.move
-            , menu False ClearCanvas "Clear" <| svgIcon images.trash
-            , menu False Undo "Undo" <| svgIcon images.undo
-            , menu False Download "Download" <| svgIcon images.download
-            ]
 
 
 viewBorders : Svg msg
@@ -419,15 +390,15 @@ viewBorders =
             (List.map vertical ns ++ List.map horizontal ns)
 
 
-viewRects : Grid -> Svg Msg
-viewRects grid =
+viewRects : Int -> Grid -> Svg Msg
+viewRects size grid =
     let
         makeRect col row pixel =
             Svg.rect
-                [ SA.width <| toString pixelSize
-                , SA.height <| toString pixelSize
-                , SA.x <| toString <| col * pixelSize
-                , SA.y <| toString <| row * pixelSize
+                [ SA.width <| toString size
+                , SA.height <| toString size
+                , SA.x <| toString <| col * size
+                , SA.y <| toString <| row * size
                 , SA.fill <| ColorUtil.toColorString pixel
                 ]
                 []
@@ -436,6 +407,36 @@ viewRects grid =
             Array2.toList <| Array2.indexedMap makeRect grid
     in
         Svg.g [] rects
+
+
+viewMenus : Mode -> ImagePaths -> Html Msg
+viewMenus selectedMode images =
+    let
+        menu selected msg label content =
+            Html.a
+                [ HA.classList
+                    [ ( "mode", True )
+                    , ( "mode--selected", selected )
+                    ]
+                , HA.href "#"
+                , HA.title label
+                , HE.onClick msg
+                , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
+                ]
+                [ content ]
+
+        modeMenu mode content =
+            menu (mode == selectedMode) (SelectMode mode) content
+    in
+        Html.div [ HA.class "menu" ]
+            [ modeMenu Paint "Paint" <| svgIcon images.pencil
+            , modeMenu Eraser "Eraser" <| svgIcon images.eraser
+            , modeMenu Bucket "Bucket" <| svgIcon images.bucket
+            , modeMenu Move "Move" <| svgIcon images.move
+            , menu False ClearCanvas "Clear" <| svgIcon images.trash
+            , menu False Undo "Undo" <| svgIcon images.undo
+            , menu False Download "Download" <| svgIcon images.download
+            ]
 
 
 viewColor : Color -> Html Msg
@@ -478,10 +479,38 @@ viewPalette grid =
         |> Html.div [ HA.class "color-selector" ]
 
 
+viewFrames : Frames -> Html Msg
+viewFrames frames =
+    Html.div
+        [ HA.class "frame-list" ]
+        [ viewFrame frames.current ]
+
+
+viewFrame : Grid -> Html Msg
+viewFrame grid =
+    let
+        size =
+            4
+
+        canvasSize =
+            resolution * size
+    in
+        Html.div
+            []
+            [ Svg.svg
+                [ SA.class "frame"
+                , SA.width <| toString canvasSize
+                , SA.height <| toString canvasSize
+                ]
+                [ viewRects size grid
+                ]
+            ]
+
+
 faIcon : String -> Html msg
 faIcon name =
     Html.i
-        [ (HA.class <| "fa fa-" ++ name) ]
+        [ HA.class <| "fa fa-" ++ name ]
         []
 
 
