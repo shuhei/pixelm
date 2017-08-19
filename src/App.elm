@@ -47,6 +47,13 @@ type alias Grid =
     Array2 Color
 
 
+type alias Frames =
+    { previous : List Grid
+    , current : Grid
+    , next : List Grid
+    }
+
+
 type alias ImagePaths =
     { pencil : String
     , eraser : String
@@ -64,8 +71,8 @@ type alias Model =
     , previousMouseDown : Maybe ( Int, Int )
     , foregroundColor : Color
     , colors : List Color
-    , history : History Grid
-    , grid : Grid
+    , history : History Frames
+    , frames : Frames
     , images : ImagePaths
     }
 
@@ -78,6 +85,14 @@ makeGrid cols rows color =
 emptyGrid : Grid
 emptyGrid =
     makeGrid resolution resolution ColorUtil.transparent
+
+
+initFrames : Frames
+initFrames =
+    { previous = []
+    , current = emptyGrid
+    , next = []
+    }
 
 
 colors : List Color
@@ -121,7 +136,7 @@ init flags =
             , foregroundColor = Color.black
             , colors = colors
             , history = History.initialize 20
-            , grid = emptyGrid
+            , frames = initFrames
             , images = flags
             }
     in
@@ -169,20 +184,20 @@ update msg model =
 
         ClearCanvas ->
             ( { model
-                | history = History.push model.grid model.history
-                , grid = emptyGrid
+                | history = History.push model.frames model.history
+                , frames = clearCurrentFrame model.frames
               }
             , Cmd.none
             )
 
         Undo ->
             let
-                ( grid, history ) =
+                ( frames, history ) =
                     History.pop model.history
             in
                 ( { model
                     | history = history
-                    , grid = Maybe.withDefault model.grid grid
+                    , frames = Maybe.withDefault model.frames frames
                   }
                 , Cmd.none
                 )
@@ -193,8 +208,8 @@ update msg model =
                     getPixelPos pos
             in
                 ( { model
-                    | history = History.push model.grid model.history
-                    , grid = updateGrid pixelPos model
+                    | history = History.push model.frames model.history
+                    , frames = updateCurrentFrame pixelPos model
                     , isMouseDown = True
                     , previousMouseDown = Just pixelPos
                   }
@@ -208,7 +223,7 @@ update msg model =
             in
                 if model.isMouseDown then
                     ( { model
-                        | grid = updateGrid pixelPos model
+                        | frames = updateCurrentFrame pixelPos model
                         , previousMouseDown = Just pixelPos
                       }
                     , Cmd.none
@@ -222,7 +237,7 @@ update msg model =
                     getPixelPos pos
             in
                 ( { model
-                    | grid = updateGrid pixelPos model
+                    | frames = updateCurrentFrame pixelPos model
                     , isMouseDown = False
                     , previousMouseDown = Nothing
                   }
@@ -231,7 +246,7 @@ update msg model =
 
         MouseDownOnContainer ->
             ( { model
-                | history = History.push model.grid model.history
+                | history = History.push model.frames model.history
                 , isMouseDown = True
               }
             , Cmd.none
@@ -244,7 +259,7 @@ update msg model =
 
         Download ->
             ( model
-            , download <| Array2.map Color.toRgb model.grid
+            , download <| Array2.map Color.toRgb model.frames.current
             )
 
 
@@ -253,29 +268,44 @@ getPixelPos ( x, y ) =
     ( x // pixelSize, y // pixelSize )
 
 
-updateGrid : ( Int, Int ) -> Model -> Grid
-updateGrid ( col, row ) model =
-    case model.mode of
-        Paint ->
-            Array2.set col row model.foregroundColor model.grid
+clearCurrentFrame : Frames -> Frames
+clearCurrentFrame frames =
+    { frames | current = emptyGrid }
 
-        Eraser ->
-            Array2.set col row ColorUtil.transparent model.grid
 
-        Bucket ->
-            Array2.fill col row model.foregroundColor model.grid
+updateCurrentFrame : ( Int, Int ) -> Model -> Frames
+updateCurrentFrame ( col, row ) model =
+    let
+        frames =
+            model.frames
 
-        Move ->
-            case model.previousMouseDown of
-                Nothing ->
-                    model.grid
+        current =
+            frames.current
 
-                Just ( prevCol, prevRow ) ->
-                    Array2.move
-                        (col - prevCol)
-                        (row - prevRow)
-                        ColorUtil.transparent
-                        model.grid
+        updated =
+            case model.mode of
+                Paint ->
+                    Array2.set col row model.foregroundColor current
+
+                Eraser ->
+                    Array2.set col row ColorUtil.transparent current
+
+                Bucket ->
+                    Array2.fill col row model.foregroundColor current
+
+                Move ->
+                    case model.previousMouseDown of
+                        Nothing ->
+                            current
+
+                        Just ( prevCol, prevRow ) ->
+                            Array2.move
+                                (col - prevCol)
+                                (row - prevRow)
+                                ColorUtil.transparent
+                                current
+    in
+        { frames | current = updated }
 
 
 port download : Array2 RGBA -> Cmd msg
@@ -291,10 +321,10 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.grid
+        [ viewGrid model.frames.current
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors
-        , viewPalette model.grid
+        , viewPalette model.frames.current
         ]
 
 
@@ -302,6 +332,10 @@ viewGrid : Grid -> Html Msg
 viewGrid grid =
     Html.div
         [ HA.class "pixel-grid-container"
+        , HA.style
+            [ ( "width", toString (resolution * pixelSize) ++ "px" )
+            , ( "height", toString (resolution * pixelSize) ++ "px" )
+            ]
         , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
         , Events.onWithStopAndPrevent "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas

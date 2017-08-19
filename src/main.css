@@ -12,10 +12,7 @@ body {
   color: #293c4b;
 }
 
-/* TODO: Stop this hard-coding */
 .pixel-grid-container {
-  width: 320px;
-  height: 320px;
   margin: 20px auto;
   -webkit-tap-highlight-color: transparent;
 }
