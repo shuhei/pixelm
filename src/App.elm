@@ -323,8 +323,7 @@ view model =
         ]
         [ viewGrid model.frames.current
         , viewMenus model.mode model.images
-        , viewColorSelector model.foregroundColor model.colors
-        , viewPalette model.frames.current
+        , viewColorSelector model.foregroundColor model.colors <| usedColors model.frames.current
         , viewFrames model.frames
         ]
 
@@ -439,26 +438,30 @@ viewMenus selectedMode images =
             ]
 
 
-viewColor : Color -> Html Msg
-viewColor color =
+viewColorSelector : Color -> List Color -> List Color -> Html Msg
+viewColorSelector selected colors usedColors =
     Html.div
-        [ HA.class "color-selector__color"
-        , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
-        , HE.onClick <| SelectColor color
+        [ HA.class "color-selector" ]
+        [ Html.div [] <|
+            viewColor [ HA.class "color-selector__color--foreground" ] selected
+                :: List.map (viewColor []) usedColors
+        , Html.div [] <|
+            List.map (viewColor []) colors
         ]
-        []
 
 
-viewColorSelector : Color -> List Color -> Html Msg
-viewColorSelector selected colors =
+viewColor : List (Html.Attribute Msg) -> Color -> Html Msg
+viewColor attrs color =
     let
-        separator =
-            Html.div [ HA.class "color-selector__separator" ] []
-
-        views =
-            viewColor selected :: separator :: List.map viewColor colors
+        attributes =
+            List.append
+                [ HA.class "color-selector__color"
+                , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
+                , HE.onClick <| SelectColor color
+                ]
+                attrs
     in
-        Html.div [ HA.class "color-selector" ] views
+        Html.div attributes []
 
 
 usedColors : Grid -> List Color
@@ -470,13 +473,6 @@ usedColors grid =
         Array2.foldr putColor Dict.empty grid
             |> Dict.values
             |> List.filter (\x -> x /= ColorUtil.transparent)
-
-
-viewPalette : Grid -> Html Msg
-viewPalette grid =
-    usedColors grid
-        |> List.map viewColor
-        |> Html.div [ HA.class "color-selector" ]
 
 
 viewFrames : Frames -> Html Msg

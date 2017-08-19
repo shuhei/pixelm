@@ -30,6 +30,10 @@ body {
   cursor: pointer;
 }
 
+.color-selector__color--foreground {
+  margin-right: 20px;
+}
+
 .menu {
   font-size: 32px;
   line-height: 32px;
