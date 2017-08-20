@@ -13,6 +13,7 @@ var app = Elm.App.embed(root, {
   bucket: require('./images/bucket.svg'),
   move: require('./images/move.svg'),
   trash: require('./images/trash.svg'),
+  plus : require('./images/plus.svg'),
   undo: require('./images/undo.svg'),
   download: require('./images/download.svg')
 });

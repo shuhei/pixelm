@@ -28,6 +28,11 @@ pixelSize =
     20
 
 
+framePixelSize : Int
+framePixelSize =
+    4
+
+
 canvasSize : Int
 canvasSize =
     pixelSize * resolution
@@ -61,6 +66,7 @@ type alias ImagePaths =
     , bucket : String
     , move : String
     , trash : String
+    , plus : String
     , undo : String
     , download : String
     }
@@ -153,6 +159,7 @@ type Msg
     | SelectColor Color
     | SelectMode Mode
     | ClearCanvas
+    | AddFrame
     | Undo
     | Download
     | MouseDownOnCanvas ( Int, Int )
@@ -191,6 +198,13 @@ update msg model =
             , Cmd.none
             )
 
+        AddFrame ->
+            ( { model
+                | frames = appendFrame emptyGrid model.frames
+              }
+            , Cmd.none
+            )
+
         Undo ->
             let
                 ( frames, history ) =
@@ -202,6 +216,11 @@ update msg model =
                   }
                 , Cmd.none
                 )
+
+        Download ->
+            ( model
+            , download <| Array2.map Color.toRgb model.frames.current
+            )
 
         MouseDownOnCanvas pos ->
             let
@@ -258,11 +277,6 @@ update msg model =
             , Cmd.none
             )
 
-        Download ->
-            ( model
-            , download <| Array2.map Color.toRgb model.frames.current
-            )
-
 
 getPixelPos : ( Int, Int ) -> ( Int, Int )
 getPixelPos ( x, y ) =
@@ -272,6 +286,18 @@ getPixelPos ( x, y ) =
 clearCurrentFrame : Frames -> Frames
 clearCurrentFrame frames =
     { frames | current = emptyGrid }
+
+
+appendFrame : Grid -> Frames -> Frames
+appendFrame frame frames =
+    let
+        previous =
+            List.concat
+                [ List.reverse frames.next
+                , frames.current :: frames.previous
+                ]
+    in
+        { frames | previous = previous, current = frame, next = [] }
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -325,7 +351,7 @@ view model =
         [ viewGrid model.frames.current
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors <| usedColors model.frames.current
-        , viewFrames model.frames
+        , viewFrames model.images model.frames
         ]
 
 
@@ -333,10 +359,7 @@ viewGrid : Grid -> Html Msg
 viewGrid grid =
     Html.div
         [ HA.class "pixel-grid-container"
-        , HA.style
-            [ ( "width", toString (resolution * pixelSize) ++ "px" )
-            , ( "height", toString (resolution * pixelSize) ++ "px" )
-            ]
+        , sizeStyle (resolution * pixelSize)
         , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
         , Events.onWithStopAndPrevent "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas
@@ -476,32 +499,54 @@ usedColors grid =
             |> List.filter (\x -> x /= ColorUtil.transparent)
 
 
-viewFrames : Frames -> Html Msg
-viewFrames frames =
+viewFrames : ImagePaths -> Frames -> Html Msg
+viewFrames images frames =
     Html.div
         [ HA.class "frame-list" ]
-        [ viewFrame frames.current ]
+    <|
+        List.concat
+            [ List.map viewFrame <| List.reverse frames.previous
+            , [ viewFrame frames.current ]
+            , List.map viewFrame frames.next
+            , [ viewAddFrame images ]
+            ]
+
+
+viewAddFrame : ImagePaths -> Html Msg
+viewAddFrame images =
+    Html.div
+        [ HA.class "frame frame--plus"
+        , sizeStyle (resolution * framePixelSize)
+        , HE.onClick AddFrame
+        ]
+        [ svgIcon images.plus ]
 
 
 viewFrame : Grid -> Html Msg
 viewFrame grid =
     let
-        size =
-            4
-
         canvasSize =
-            resolution * size
+            resolution * framePixelSize
     in
         Html.div
-            []
+            [ HA.class "frame"
+            , sizeStyle canvasSize
+            ]
             [ Svg.svg
-                [ SA.class "frame"
-                , SA.width <| toString canvasSize
+                [ SA.width <| toString canvasSize
                 , SA.height <| toString canvasSize
                 ]
-                [ viewRects size grid
+                [ viewRects framePixelSize grid
                 ]
             ]
+
+
+sizeStyle : Int -> Html.Attribute msg
+sizeStyle size =
+    HA.style
+        [ ( "width", toString size ++ "px" )
+        , ( "height", toString size ++ "px" )
+        ]
 
 
 faIcon : String -> Html msg

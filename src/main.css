@@ -62,8 +62,23 @@ body {
 }
 
 .frame-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .frame {
   border: 2px solid #ccc;
+  margin: 0 3px;
+}
+
+.frame:hover {
+  background: #eee;
+  cursor: pointer;
+}
+
+.frame--plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
