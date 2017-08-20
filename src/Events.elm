@@ -10,13 +10,6 @@ minusPos ( x0, y0 ) ( x1, y1 ) =
     ( x0 - x1, y0 - y1 )
 
 
-decodeTouch : Json.Decoder ( Int, Int )
-decodeTouch =
-    Json.map2 (,)
-        (Json.field "clientX" Json.int)
-        (Json.field "clientY" Json.int)
-
-
 decodeTouchEvent : (( Int, Int ) -> msg) -> Json.Decoder msg
 decodeTouchEvent tagger =
     let
@@ -24,7 +17,7 @@ decodeTouchEvent tagger =
             Json.field "target" decodeOffset
 
         decodeFirstTouch =
-            Json.field "touches" <| Json.field "0" decodeTouch
+            Json.field "touches" <| Json.field "0" decodeClientPos
     in
         Json.map tagger <|
             Json.map2 minusPos decodeFirstTouch decodeTarget
