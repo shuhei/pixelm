@@ -4,6 +4,7 @@ import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Html.Lazy as HL
 import Json.Decode as Json
 import Svg exposing (Svg)
 import Svg.Attributes as SA
@@ -526,7 +527,7 @@ svgIcon path =
 main : Program ImagePaths Model Msg
 main =
     Html.programWithFlags
-        { view = view
+        { view = HL.lazy view
         , init = init
         , update = update
         , subscriptions = \_ -> Sub.none
