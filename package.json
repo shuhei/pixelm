@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/shuhei/pixelm#readme",
   "devDependencies": {
-    "create-elm-app": "^1.2.2",
+    "create-elm-app": "^1.2.3",
     "gh-pages": "^1.0.0"
   }
 }
