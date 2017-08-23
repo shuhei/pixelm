@@ -69,12 +69,16 @@ body {
 
 .frame {
   border: 2px solid #ccc;
-  margin: 0 3px;
+  margin: 3px;
 }
 
 .frame:hover {
   background: #eee;
   cursor: pointer;
+}
+
+.frame--selected {
+  border-color: #000;
 }
 
 .frame--plus {

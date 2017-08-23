@@ -12,6 +12,7 @@ import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
 import Events
+import SelectionList exposing (SelectionList)
 import History exposing (History)
 
 
@@ -54,10 +55,7 @@ type alias Grid =
 
 
 type alias Frames =
-    { previous : List Grid
-    , current : Grid
-    , next : List Grid
-    }
+    SelectionList Grid
 
 
 type alias ImagePaths =
@@ -92,14 +90,6 @@ makeGrid cols rows color =
 emptyGrid : Grid
 emptyGrid =
     makeGrid resolution resolution ColorUtil.transparent
-
-
-initFrames : Frames
-initFrames =
-    { previous = []
-    , current = emptyGrid
-    , next = []
-    }
 
 
 colors : List Color
@@ -143,7 +133,7 @@ init flags =
             , foregroundColor = Color.black
             , colors = colors
             , history = History.initialize 20
-            , frames = initFrames
+            , frames = SelectionList.init emptyGrid
             , images = flags
             }
     in
@@ -162,6 +152,7 @@ type Msg
     | AddFrame
     | Undo
     | Download
+    | SelectFrame Grid
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
     | MouseUpOnCanvas ( Int, Int )
@@ -193,14 +184,14 @@ update msg model =
         ClearCanvas ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = clearCurrentFrame model.frames
+                , frames = SelectionList.updateCurrent emptyGrid model.frames
               }
             , Cmd.none
             )
 
         AddFrame ->
             ( { model
-                | frames = appendFrame emptyGrid model.frames
+                | frames = SelectionList.append emptyGrid model.frames
               }
             , Cmd.none
             )
@@ -220,6 +211,11 @@ update msg model =
         Download ->
             ( model
             , download <| Array2.map Color.toRgb model.frames.current
+            )
+
+        SelectFrame frame ->
+            ( { model | frames = SelectionList.selectCurrent frame model.frames }
+            , Cmd.none
             )
 
         MouseDownOnCanvas pos ->
@@ -281,23 +277,6 @@ update msg model =
 getPixelPos : ( Int, Int ) -> ( Int, Int )
 getPixelPos ( x, y ) =
     ( x // pixelSize, y // pixelSize )
-
-
-clearCurrentFrame : Frames -> Frames
-clearCurrentFrame frames =
-    { frames | current = emptyGrid }
-
-
-appendFrame : Grid -> Frames -> Frames
-appendFrame frame frames =
-    let
-        previous =
-            List.concat
-                [ List.reverse frames.next
-                , frames.current :: frames.previous
-                ]
-    in
-        { frames | previous = previous, current = frame, next = [] }
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -505,9 +484,9 @@ viewFrames images frames =
         [ HA.class "frame-list" ]
     <|
         List.concat
-            [ List.map viewFrame <| List.reverse frames.previous
-            , [ viewFrame frames.current ]
-            , List.map viewFrame frames.next
+            [ List.map (viewFrame False) <| List.reverse frames.previous
+            , [ viewFrame True frames.current ]
+            , List.map (viewFrame False) frames.next
             , [ viewAddFrame images ]
             ]
 
@@ -522,15 +501,17 @@ viewAddFrame images =
         [ svgIcon images.plus ]
 
 
-viewFrame : Grid -> Html Msg
-viewFrame grid =
+viewFrame : Bool -> Grid -> Html Msg
+viewFrame selected grid =
     let
         canvasSize =
             resolution * framePixelSize
     in
         Html.div
-            [ HA.class "frame"
+            [ HA.classList
+                [ ( "frame", True ), ( "frame--selected", selected ) ]
             , sizeStyle canvasSize
+            , HE.onClick <| SelectFrame grid
             ]
             [ Svg.svg
                 [ SA.width <| toString canvasSize
