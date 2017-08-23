@@ -1,5 +1,6 @@
 port module App exposing (..)
 
+import Array
 import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
@@ -8,6 +9,7 @@ import Html.Lazy as HL
 import Json.Decode as Json
 import Svg exposing (Svg)
 import Svg.Attributes as SA
+import Time exposing (Time)
 import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
@@ -78,6 +80,8 @@ type alias Model =
     , colors : List Color
     , history : History Frames
     , frames : Frames
+    , fps : Int
+    , frameIndex : Int
     , images : ImagePaths
     }
 
@@ -134,6 +138,8 @@ init flags =
             , colors = colors
             , history = History.initialize 20
             , frames = SelectionList.init emptyGrid
+            , fps = 10
+            , frameIndex = 0
             , images = flags
             }
     in
@@ -158,11 +164,12 @@ type Msg
     | MouseUpOnCanvas ( Int, Int )
     | MouseDownOnContainer
     | MouseUpOnContainer
+    | Tick Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "msg" msg of
+    case msg of
         NoOp ->
             ( model, Cmd.none )
 
@@ -273,6 +280,13 @@ update msg model =
             , Cmd.none
             )
 
+        Tick time ->
+            ( { model
+                | frameIndex = (floor <| Time.inMilliseconds time) // model.fps
+              }
+            , Cmd.none
+            )
+
 
 getPixelPos : ( Int, Int ) -> ( Int, Int )
 getPixelPos ( x, y ) =
@@ -330,7 +344,7 @@ view model =
         [ viewGrid model.frames.current
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors <| usedColors model.frames.current
-        , viewFrames model.images model.frames
+        , viewFrames model.images model.frameIndex model.frames
         ]
 
 
@@ -478,16 +492,50 @@ usedColors grid =
             |> List.filter (\x -> x /= ColorUtil.transparent)
 
 
-viewFrames : ImagePaths -> Frames -> Html Msg
-viewFrames images frames =
+type FrameType
+    = FrameNormal
+    | FrameSelected
+    | FramePreview
+
+
+viewFrames : ImagePaths -> Int -> Frames -> Html Msg
+viewFrames images index frames =
     Html.div
         [ HA.class "frame-list" ]
     <|
         List.concat
-            [ List.map (viewFrame False) <| List.reverse frames.previous
-            , [ viewFrame True frames.current ]
-            , List.map (viewFrame False) frames.next
+            [ if SelectionList.isSingle frames then
+                []
+              else
+                [ viewFrame FramePreview <| SelectionList.get index frames ]
+            , List.map (viewFrame FrameNormal) <| Array.toList frames.previous
+            , [ viewFrame FrameSelected frames.current ]
+            , List.map (viewFrame FrameNormal) <| Array.toList frames.next
             , [ viewAddFrame images ]
+            ]
+
+
+viewFrame : FrameType -> Grid -> Html Msg
+viewFrame frameType grid =
+    let
+        canvasSize =
+            resolution * framePixelSize
+    in
+        Html.div
+            [ HA.classList
+                [ ( "frame", True )
+                , ( "frame--selected", frameType == FrameSelected )
+                , ( "frame--preview", frameType == FramePreview )
+                ]
+            , sizeStyle canvasSize
+            , HE.onClick <| SelectFrame grid
+            ]
+            [ Svg.svg
+                [ SA.width <| toString canvasSize
+                , SA.height <| toString canvasSize
+                ]
+                [ viewRects framePixelSize grid
+                ]
             ]
 
 
@@ -499,27 +547,6 @@ viewAddFrame images =
         , HE.onClick AddFrame
         ]
         [ svgIcon images.plus ]
-
-
-viewFrame : Bool -> Grid -> Html Msg
-viewFrame selected grid =
-    let
-        canvasSize =
-            resolution * framePixelSize
-    in
-        Html.div
-            [ HA.classList
-                [ ( "frame", True ), ( "frame--selected", selected ) ]
-            , sizeStyle canvasSize
-            , HE.onClick <| SelectFrame grid
-            ]
-            [ Svg.svg
-                [ SA.width <| toString canvasSize
-                , SA.height <| toString canvasSize
-                ]
-                [ viewRects framePixelSize grid
-                ]
-            ]
 
 
 sizeStyle : Int -> Html.Attribute msg
@@ -550,11 +577,16 @@ svgIcon path =
 ---- PROGRAM ----
 
 
+tick : Model -> Sub Msg
+tick model =
+    Time.every (1000 / (60 / toFloat model.fps) * Time.millisecond) Tick
+
+
 main : Program ImagePaths Model Msg
 main =
     Html.programWithFlags
         { view = HL.lazy view
         , init = init
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = tick
         }

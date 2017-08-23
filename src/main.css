@@ -77,6 +77,10 @@ body {
   cursor: pointer;
 }
 
+.frame--preview {
+  margin-right: 20px;
+}
+
 .frame--selected {
   border-color: #000;
 }
