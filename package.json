@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "ELM_DEBUGGER=false elm-app start",
-    "build": "elm-app build",
+    "build": "PUBLIC_URL=/pixelm/ elm-app build",
     "test": "elm-app test",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
