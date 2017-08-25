@@ -1,6 +1,6 @@
 port module App exposing (..)
 
-import Array
+import Array exposing (Array)
 import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
@@ -217,7 +217,7 @@ update msg model =
 
         Download ->
             ( model
-            , download <| Array2.map Color.toRgb model.frames.current
+            , download <| Array.map (Array2.map Color.toRgb) <| SelectionList.toArray model.frames
             )
 
         SelectFrame frame ->
@@ -328,7 +328,7 @@ updateCurrentFrame ( col, row ) model =
         { frames | current = updated }
 
 
-port download : Array2 RGBA -> Cmd msg
+port download : Array (Array2 RGBA) -> Cmd msg
 
 
 

@@ -1,4 +1,5 @@
 require('./main.css');
+var GIF = require('gif.js');
 var Elm = require('./App.elm');
 
 // TOOD: Share these with Elm.
@@ -17,9 +18,13 @@ var app = Elm.App.embed(root, {
   undo: require('./images/undo.svg'),
   download: require('./images/download.svg')
 });
-app.ports.download.subscribe(function (grid) {
-  exportSvg(grid);
-  exportGif(grid);
+app.ports.download.subscribe(function (grids) {
+  if (grids.length === 1) {
+    exportSvg(grids[0]);
+    exportGif(grids[0]);
+  } else if (grids.length > 1) {
+    exportAnimatedGif(grids);
+  }
 });
 
 function exportSvg(grid) {
@@ -65,19 +70,41 @@ function buildRect(x, y, rgba) {
   ].join('');
 }
 
-function exportGif(grid) {
-  var canvas = document.getElementById('canvas');
-  canvas.width = pixelSize * resolution;
-  canvas.height = pixelSize * resolution;
+function createCanvas(width, height) {
+  var canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
 
-  drawInCanvas(canvas, grid);
+function exportAnimatedGif(grids) {
+  const size = pixelSize * resolution;
+  var gif = new GIF({
+    width: size,
+    height: size
+  });
+  var canvas = createCanvas(size, size);
+  var ctx = canvas.getContext('2d');
+  for (var i = 0; i < grids.length; i++) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawInCanvas(ctx, grids[i]);
+    gif.addFrame(ctx, { copy: true, delay: 100 });
+  }
+  gif.on('finished', function (blob) {
+    downloadData('animation.gif', URL.createObjectURL(blob));
+  });
+  gif.render();
+}
+
+function exportGif(grid) {
+  var canvas = createCanvas(pixelSize * resolution, pixelSize * resolution);
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawInCanvas(ctx, grid);
   downloadData('pixels.gif', canvas.toDataURL('image/gif'));
 }
 
-function drawInCanvas(canvas, grid) {
-  var ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+function drawInCanvas(ctx, grid) {
   for (var row = 0; row < grid.length; row++) {
     var cols = grid[row];
     for (var col = 0; col < cols.length; col++) {

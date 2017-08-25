@@ -1,4 +1,4 @@
-module SelectionList exposing (..)
+module SelectionList exposing (SelectionList, init, updateCurrent, append, selectCurrent, isSingle, get, toArray)
 
 import Array exposing (Array)
 
@@ -31,27 +31,18 @@ append frame frames =
     }
 
 
+partitionWithItem : a -> List a -> Maybe ( List a, List a )
+partitionWithItem item list =
+    case list of
+        [] ->
+            Nothing
 
--- TODO: Better implementation?
-
-
-partitionWithItem : a -> Array a -> Maybe ( Array a, Array a )
-partitionWithItem item array =
-    let
-        withList list =
-            case list of
-                [] ->
-                    Nothing
-
-                x :: xs ->
-                    if x == item then
-                        Just ( [], xs )
-                    else
-                        Maybe.map (\( ys, zs ) -> ( x :: ys, zs )) <|
-                            withList xs
-    in
-        withList (Array.toList array)
-            |> Maybe.map (\( xs, ys ) -> ( Array.fromList xs, Array.fromList ys ))
+        x :: xs ->
+            if x == item then
+                Just ( [], xs )
+            else
+                Maybe.map (\( ys, zs ) -> ( x :: ys, zs )) <|
+                    partitionWithItem item xs
 
 
 sandwich : Array a -> a -> Array a -> Array a
@@ -60,26 +51,19 @@ sandwich xs y zs =
 
 
 selectCurrent : a -> SelectionList a -> SelectionList a
-selectCurrent frame frames =
-    if frame == frames.current then
-        frames
-    else
-        case partitionWithItem frame frames.previous of
+selectCurrent item list =
+    let
+        items =
+            Array.toList <| toArray list
+    in
+        case partitionWithItem item items of
             Nothing ->
-                case partitionWithItem frame frames.next of
-                    Nothing ->
-                        frames
-
-                    Just ( xs, ys ) ->
-                        { previous = sandwich frames.previous frames.current xs
-                        , current = frame
-                        , next = ys
-                        }
+                list
 
             Just ( xs, ys ) ->
-                { previous = xs
-                , current = frame
-                , next = sandwich ys frames.current frames.next
+                { previous = Array.fromList xs
+                , current = item
+                , next = Array.fromList ys
                 }
 
 
@@ -109,3 +93,8 @@ get index list =
                 Array.get (i - 1 - prevSize) list.next
     in
         Maybe.withDefault list.current maybe
+
+
+toArray : SelectionList a -> Array a
+toArray list =
+    sandwich list.previous list.current list.next
