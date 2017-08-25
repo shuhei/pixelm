@@ -1,5 +1,6 @@
 port module App exposing (..)
 
+import Array exposing (Array)
 import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
@@ -8,10 +9,12 @@ import Html.Lazy as HL
 import Json.Decode as Json
 import Svg exposing (Svg)
 import Svg.Attributes as SA
+import Time exposing (Time)
 import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
 import Events
+import SelectionList exposing (SelectionList)
 import History exposing (History)
 
 
@@ -26,6 +29,11 @@ resolution =
 pixelSize : Int
 pixelSize =
     20
+
+
+framePixelSize : Int
+framePixelSize =
+    4
 
 
 canvasSize : Int
@@ -49,10 +57,7 @@ type alias Grid =
 
 
 type alias Frames =
-    { previous : List Grid
-    , current : Grid
-    , next : List Grid
-    }
+    SelectionList Grid
 
 
 type alias ImagePaths =
@@ -61,6 +66,7 @@ type alias ImagePaths =
     , bucket : String
     , move : String
     , trash : String
+    , plus : String
     , undo : String
     , download : String
     }
@@ -74,6 +80,8 @@ type alias Model =
     , colors : List Color
     , history : History Frames
     , frames : Frames
+    , fps : Int
+    , frameIndex : Int
     , images : ImagePaths
     }
 
@@ -86,14 +94,6 @@ makeGrid cols rows color =
 emptyGrid : Grid
 emptyGrid =
     makeGrid resolution resolution ColorUtil.transparent
-
-
-initFrames : Frames
-initFrames =
-    { previous = []
-    , current = emptyGrid
-    , next = []
-    }
 
 
 colors : List Color
@@ -137,7 +137,9 @@ init flags =
             , foregroundColor = Color.black
             , colors = colors
             , history = History.initialize 20
-            , frames = initFrames
+            , frames = SelectionList.init emptyGrid
+            , fps = 10
+            , frameIndex = 0
             , images = flags
             }
     in
@@ -153,18 +155,21 @@ type Msg
     | SelectColor Color
     | SelectMode Mode
     | ClearCanvas
+    | AddFrame
     | Undo
     | Download
+    | SelectFrame Grid
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
     | MouseUpOnCanvas ( Int, Int )
     | MouseDownOnContainer
     | MouseUpOnContainer
+    | Tick Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "msg" msg of
+    case msg of
         NoOp ->
             ( model, Cmd.none )
 
@@ -186,7 +191,14 @@ update msg model =
         ClearCanvas ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = clearCurrentFrame model.frames
+                , frames = SelectionList.updateCurrent emptyGrid model.frames
+              }
+            , Cmd.none
+            )
+
+        AddFrame ->
+            ( { model
+                | frames = SelectionList.append emptyGrid model.frames
               }
             , Cmd.none
             )
@@ -202,6 +214,16 @@ update msg model =
                   }
                 , Cmd.none
                 )
+
+        Download ->
+            ( model
+            , download <| Array.map (Array2.map Color.toRgb) <| SelectionList.toArray model.frames
+            )
+
+        SelectFrame frame ->
+            ( { model | frames = SelectionList.selectCurrent frame model.frames }
+            , Cmd.none
+            )
 
         MouseDownOnCanvas pos ->
             let
@@ -258,20 +280,17 @@ update msg model =
             , Cmd.none
             )
 
-        Download ->
-            ( model
-            , download <| Array2.map Color.toRgb model.frames.current
+        Tick time ->
+            ( { model
+                | frameIndex = (floor <| Time.inMilliseconds time) // model.fps
+              }
+            , Cmd.none
             )
 
 
 getPixelPos : ( Int, Int ) -> ( Int, Int )
 getPixelPos ( x, y ) =
     ( x // pixelSize, y // pixelSize )
-
-
-clearCurrentFrame : Frames -> Frames
-clearCurrentFrame frames =
-    { frames | current = emptyGrid }
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -309,7 +328,7 @@ updateCurrentFrame ( col, row ) model =
         { frames | current = updated }
 
 
-port download : Array2 RGBA -> Cmd msg
+port download : Array (Array2 RGBA) -> Cmd msg
 
 
 
@@ -325,7 +344,7 @@ view model =
         [ viewGrid model.frames.current
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors <| usedColors model.frames.current
-        , viewFrames model.frames
+        , viewFrames model.images model.frameIndex model.frames
         ]
 
 
@@ -333,10 +352,7 @@ viewGrid : Grid -> Html Msg
 viewGrid grid =
     Html.div
         [ HA.class "pixel-grid-container"
-        , HA.style
-            [ ( "width", toString (resolution * pixelSize) ++ "px" )
-            , ( "height", toString (resolution * pixelSize) ++ "px" )
-            ]
+        , sizeStyle (resolution * pixelSize)
         , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
         , Events.onWithStopAndPrevent "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas
@@ -476,32 +492,69 @@ usedColors grid =
             |> List.filter (\x -> x /= ColorUtil.transparent)
 
 
-viewFrames : Frames -> Html Msg
-viewFrames frames =
+type FrameType
+    = FrameNormal
+    | FrameSelected
+    | FramePreview
+
+
+viewFrames : ImagePaths -> Int -> Frames -> Html Msg
+viewFrames images index frames =
     Html.div
         [ HA.class "frame-list" ]
-        [ viewFrame frames.current ]
+    <|
+        List.concat
+            [ if SelectionList.isSingle frames then
+                []
+              else
+                [ viewFrame FramePreview <| SelectionList.get index frames ]
+            , List.map (viewFrame FrameNormal) <| Array.toList frames.previous
+            , [ viewFrame FrameSelected frames.current ]
+            , List.map (viewFrame FrameNormal) <| Array.toList frames.next
+            , [ viewAddFrame images ]
+            ]
 
 
-viewFrame : Grid -> Html Msg
-viewFrame grid =
+viewFrame : FrameType -> Grid -> Html Msg
+viewFrame frameType grid =
     let
-        size =
-            4
-
         canvasSize =
-            resolution * size
+            resolution * framePixelSize
     in
         Html.div
-            []
+            [ HA.classList
+                [ ( "frame", True )
+                , ( "frame--selected", frameType == FrameSelected )
+                , ( "frame--preview", frameType == FramePreview )
+                ]
+            , sizeStyle canvasSize
+            , HE.onClick <| SelectFrame grid
+            ]
             [ Svg.svg
-                [ SA.class "frame"
-                , SA.width <| toString canvasSize
+                [ SA.width <| toString canvasSize
                 , SA.height <| toString canvasSize
                 ]
-                [ viewRects size grid
+                [ viewRects framePixelSize grid
                 ]
             ]
+
+
+viewAddFrame : ImagePaths -> Html Msg
+viewAddFrame images =
+    Html.div
+        [ HA.class "frame frame--plus"
+        , sizeStyle (resolution * framePixelSize)
+        , HE.onClick AddFrame
+        ]
+        [ svgIcon images.plus ]
+
+
+sizeStyle : Int -> Html.Attribute msg
+sizeStyle size =
+    HA.style
+        [ ( "width", toString size ++ "px" )
+        , ( "height", toString size ++ "px" )
+        ]
 
 
 faIcon : String -> Html msg
@@ -524,11 +577,16 @@ svgIcon path =
 ---- PROGRAM ----
 
 
+tick : Model -> Sub Msg
+tick model =
+    Time.every (1000 / (60 / toFloat model.fps) * Time.millisecond) Tick
+
+
 main : Program ImagePaths Model Msg
 main =
     Html.programWithFlags
         { view = HL.lazy view
         , init = init
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = tick
         }

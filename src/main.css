@@ -62,8 +62,31 @@ body {
 }
 
 .frame-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .frame {
   border: 2px solid #ccc;
+  margin: 3px;
+}
+
+.frame:hover {
+  background: #eee;
+  cursor: pointer;
+}
+
+.frame--preview {
+  margin-right: 20px;
+}
+
+.frame--selected {
+  border-color: #000;
+}
+
+.frame--plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

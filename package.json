@@ -8,11 +8,11 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "elm-app start",
+    "start": "ELM_DEBUGGER=false elm-app start",
     "build": "elm-app build",
     "test": "elm-app test",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d build"
   },
   "repository": {
     "type": "git",
@@ -25,7 +25,10 @@
   },
   "homepage": "https://github.com/shuhei/pixelm#readme",
   "devDependencies": {
-    "create-elm-app": "^1.2.2",
+    "create-elm-app": "^1.2.3",
     "gh-pages": "^1.0.0"
+  },
+  "dependencies": {
+    "gif.js": "^0.2.0"
   }
 }
