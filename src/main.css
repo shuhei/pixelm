@@ -62,14 +62,20 @@ body {
 }
 
 .frame-list {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 15px;
+  margin: 0 10px;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
 .frame {
+  display: inline-block;
   border: 2px solid #ccc;
   margin: 3px;
+  vertical-align: middle;
 }
 
 .frame:hover {
@@ -85,8 +91,6 @@ body {
   border-color: #000;
 }
 
-.frame--plus {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.frame--plus img {
+  padding-top: 15px;
 }
