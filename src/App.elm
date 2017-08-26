@@ -352,7 +352,8 @@ view model =
         ]
         [ viewGrid model.frames.current
         , viewMenus model.mode model.images
-        , viewColorSelector model.foregroundColor model.colors <| usedColors model.frames.current
+        , viewColorSelector model.foregroundColor model.colors <|
+            usedColors (Array.toList <| SelectionList.toArray model.frames)
         , viewFrames model.images model.frameIndex model.frames
         ]
 
@@ -490,13 +491,13 @@ viewColor attrs color =
         Html.div attributes []
 
 
-usedColors : Grid -> List Color
-usedColors grid =
+usedColors : List Grid -> List Color
+usedColors grids =
     let
         putColor c used =
             Dict.insert (ColorUtil.toColorString c) c used
     in
-        Array2.foldr putColor Dict.empty grid
+        List.foldr (\grid used -> Array2.foldr putColor used grid) Dict.empty grids
             |> Dict.values
             |> List.filter (\x -> x /= ColorUtil.transparent)
 
