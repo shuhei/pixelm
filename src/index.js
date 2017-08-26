@@ -1,6 +1,8 @@
-require('./main.css');
+require('blueimp-canvas-to-blob');
+var fileSaver = require('file-saver');
 var GIF = require('gif.js');
 var Elm = require('./App.elm');
+require('./main.css');
 
 // TOOD: Share these with Elm.
 var pixelSize = 20;
@@ -47,11 +49,16 @@ function exportSvg(grid) {
     rects,
     '</svg>'
   ].join('');
-  var url = 'data:image/svg+xml;utf8,' + svg;
-  downloadData('pixels.svg', url);
+  var blob = new Blob([svg], {
+    type: 'image/svg+xml;charset=utf-8'
+  });
+  fileSaver.saveAs(blob, 'pixels.svg', true);
 }
 
 function buildRect(x, y, rgba) {
+  if (rgba.alpha === 0) {
+    return '';
+  }
   var xx = x * pixelSize;
   var yy = y * pixelSize;
   var color = fillColor(rgba);
@@ -91,7 +98,7 @@ function exportAnimatedGif(grids) {
     gif.addFrame(ctx, { copy: true, delay: 100 });
   }
   gif.on('finished', function (blob) {
-    downloadData('animation.gif', URL.createObjectURL(blob));
+    fileSaver.saveAs(blob, 'animation.gif');
   });
   gif.render();
 }
@@ -101,7 +108,9 @@ function exportGif(grid) {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawInCanvas(ctx, grid);
-  downloadData('pixels.gif', canvas.toDataURL('image/gif'));
+  canvas.toBlob(function (blob) {
+    fileSaver.saveAs(blob, 'pixels.gif');
+  }, 'image/gif');
 }
 
 function drawInCanvas(ctx, grid) {
@@ -129,14 +138,6 @@ function fillColor(rgba) {
     rgba.alpha,
     ')'
   ].join('');
-}
-
-function downloadData(filename, url) {
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.target = '_blank';
-  a.click();
 }
 
 // Stop scroll on touch devices.
