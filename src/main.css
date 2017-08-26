@@ -78,7 +78,9 @@ body {
   vertical-align: middle;
 }
 
-.frame:hover {
+.frame--normal:hover,
+.frame--selected:hover,
+.frame--plus:hover {
   background: #eee;
   cursor: pointer;
 }

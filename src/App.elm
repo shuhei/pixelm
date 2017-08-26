@@ -520,16 +520,25 @@ viewFrame frameType grid =
     let
         canvasSize =
             resolution * framePixelSize
+
+        attrs =
+            List.concat
+                [ [ HA.classList
+                        [ ( "frame", True )
+                        , ( "frame--normal", frameType == FrameNormal )
+                        , ( "frame--selected", frameType == FrameSelected )
+                        , ( "frame--preview", frameType == FramePreview )
+                        ]
+                  , sizeStyle canvasSize
+                  ]
+                , if frameType == FramePreview then
+                    []
+                  else
+                    [ HE.onClick <| SelectFrame grid ]
+                ]
     in
         Html.div
-            [ HA.classList
-                [ ( "frame", True )
-                , ( "frame--selected", frameType == FrameSelected )
-                , ( "frame--preview", frameType == FramePreview )
-                ]
-            , sizeStyle canvasSize
-            , HE.onClick <| SelectFrame grid
-            ]
+            attrs
             [ Svg.svg
                 [ SA.width <| toString canvasSize
                 , SA.height <| toString canvasSize
