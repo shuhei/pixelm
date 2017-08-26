@@ -1,4 +1,15 @@
-module SelectionList exposing (SelectionList, init, updateCurrent, append, selectCurrent, isSingle, get, toArray)
+module SelectionList
+    exposing
+        ( SelectionList
+        , init
+        , updateCurrent
+        , selectCurrent
+        , deleteCurrent
+        , append
+        , isSingle
+        , get
+        , toArray
+        )
 
 import Array exposing (Array)
 
@@ -65,6 +76,32 @@ selectCurrent item list =
                 , current = item
                 , next = Array.fromList ys
                 }
+
+
+getLast : Array a -> Maybe a
+getLast array =
+    Array.get (Array.length array - 1) array
+
+
+deleteCurrent : SelectionList a -> SelectionList a
+deleteCurrent list =
+    case Array.get 0 list.next of
+        Just nextCurrent ->
+            { list
+                | current = nextCurrent
+                , next = Array.slice 1 (Array.length list.next) list.next
+            }
+
+        Nothing ->
+            case getLast list.previous of
+                Just nextCurrent ->
+                    { list
+                        | current = nextCurrent
+                        , previous = Array.slice 0 -1 list.previous
+                    }
+
+                Nothing ->
+                    list
 
 
 isSingle : SelectionList a -> Bool

@@ -159,6 +159,7 @@ type Msg
     | Undo
     | Download
     | SelectFrame Grid
+    | DeleteFrame Grid
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
     | MouseUpOnCanvas ( Int, Int )
@@ -222,6 +223,14 @@ update msg model =
 
         SelectFrame frame ->
             ( { model | frames = SelectionList.selectCurrent frame model.frames }
+            , Cmd.none
+            )
+
+        DeleteFrame grid ->
+            ( { model
+                | history = History.push model.frames model.history
+                , frames = SelectionList.deleteCurrent <| SelectionList.selectCurrent grid model.frames
+              }
             , Cmd.none
             )
 
@@ -534,7 +543,9 @@ viewFrame frameType grid =
                 , if frameType == FramePreview then
                     []
                   else
-                    [ HE.onClick <| SelectFrame grid ]
+                    [ HE.onClick <| SelectFrame grid
+                    , HE.onDoubleClick <| DeleteFrame grid
+                    ]
                 ]
     in
         Html.div
