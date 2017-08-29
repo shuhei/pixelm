@@ -72,6 +72,11 @@ type alias ImagePaths =
     }
 
 
+type ModalConfig
+    = NoModal
+    | FrameModal Grid
+
+
 type alias Model =
     { mode : Mode
     , isMouseDown : Bool
@@ -83,6 +88,7 @@ type alias Model =
     , fps : Int
     , frameIndex : Int
     , images : ImagePaths
+    , modalConfig : ModalConfig
     }
 
 
@@ -141,6 +147,7 @@ init flags =
             , fps = 10
             , frameIndex = 0
             , images = flags
+            , modalConfig = NoModal
             }
     in
         ( model, Cmd.none )
@@ -160,6 +167,7 @@ type Msg
     | Download
     | SelectFrame Grid
     | DeleteFrame Grid
+    | ShowFrameModal Grid
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
     | MouseUpOnCanvas ( Int, Int )
@@ -230,7 +238,13 @@ update msg model =
             ( { model
                 | history = History.push model.frames model.history
                 , frames = SelectionList.deleteCurrent <| SelectionList.selectCurrent grid model.frames
+                , modalConfig = NoModal
               }
+            , Cmd.none
+            )
+
+        ShowFrameModal grid ->
+            ( { model | modalConfig = FrameModal grid }
             , Cmd.none
             )
 
@@ -355,7 +369,39 @@ view model =
         , viewColorSelector model.foregroundColor model.colors <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
         , viewFrames model.images model.frameIndex model.frames
+        , viewModal model.modalConfig
         ]
+
+
+viewModal : ModalConfig -> Html Msg
+viewModal config =
+    let
+        content =
+            case config of
+                NoModal ->
+                    []
+
+                FrameModal frame ->
+                    [ Html.p
+                        []
+                        [ Html.button
+                            [ HA.class "modal-button"
+                            , HE.onClick <| DeleteFrame frame
+                            ]
+                            [ Html.text "Delete Frame" ]
+                        ]
+                    ]
+    in
+        Html.div
+            [ HA.classList
+                [ ( "modal", True )
+                , ( "modal--shown", config /= NoModal )
+                ]
+            ]
+            [ Html.div
+                [ HA.class "modal-content" ]
+                content
+            ]
 
 
 viewGrid : Grid -> Html Msg
@@ -545,7 +591,7 @@ viewFrame frameType grid =
                     []
                   else
                     [ HE.onClick <| SelectFrame grid
-                    , HE.onDoubleClick <| DeleteFrame grid
+                    , HE.onDoubleClick <| ShowFrameModal grid
                     ]
                 ]
     in
