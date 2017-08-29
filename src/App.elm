@@ -168,6 +168,7 @@ type Msg
     | SelectFrame Grid
     | DeleteFrame Grid
     | ShowFrameModal Grid
+    | CloseModal
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
     | MouseUpOnCanvas ( Int, Int )
@@ -245,6 +246,11 @@ update msg model =
 
         ShowFrameModal grid ->
             ( { model | modalConfig = FrameModal grid }
+            , Cmd.none
+            )
+
+        CloseModal ->
+            ( { model | modalConfig = NoModal }
             , Cmd.none
             )
 
@@ -385,10 +391,15 @@ viewModal config =
                     [ Html.p
                         []
                         [ Html.button
-                            [ HA.class "modal-button"
-                            , HE.onClick <| DeleteFrame frame
+                            [ HA.class "modal-button modal-button--primary"
+                            , Events.onWithStopAndPrevent "click" <| Json.succeed (DeleteFrame frame)
                             ]
                             [ Html.text "Delete Frame" ]
+                        , Html.button
+                            [ HA.class "modal-button modal-button--default"
+                            , Events.onWithStopAndPrevent "click" <| Json.succeed CloseModal
+                            ]
+                            [ Html.text "Close" ]
                         ]
                     ]
     in
@@ -397,6 +408,7 @@ viewModal config =
                 [ ( "modal", True )
                 , ( "modal--shown", config /= NoModal )
                 ]
+            , HE.onClick CloseModal
             ]
             [ Html.div
                 [ HA.class "modal-content" ]

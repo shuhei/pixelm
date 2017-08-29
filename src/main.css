@@ -120,15 +120,27 @@ body {
   padding: 20px;
   border: 1px solid #888;
   width: 80%;
+  max-width: 280px;
 }
 
 .modal-button {
   width: 100%;
   padding: 10px;
-  background-color: #90c;
   color: #fff;
   font-size: 20px;
   border: 0 none;
-  border-bottom: 3px solid #309;
   cursor: pointer;
+  margin: 10px 0;
+}
+
+.modal-button--default {
+  color: #333;
+  background-color: #ccc;
+  border-bottom: 3px solid #999;
+}
+
+.modal-button--primary {
+  color: #fff;
+  background-color: #90c;
+  border-bottom: 3px solid #309;
 }
