@@ -43,18 +43,18 @@ append frame frames =
     }
 
 
-partitionWithItem : (a -> a -> Bool) -> a -> List a -> Maybe ( List a, List a )
-partitionWithItem areSame item list =
+partitionWithItem : a -> List a -> Maybe ( List a, List a )
+partitionWithItem item list =
     case list of
         [] ->
             Nothing
 
         x :: xs ->
-            if areSame x item then
+            if x == item then
                 Just ( [], xs )
             else
                 Maybe.map (\( ys, zs ) -> ( x :: ys, zs )) <|
-                    partitionWithItem areSame item xs
+                    partitionWithItem item xs
 
 
 sandwich : Array a -> a -> Array a -> Array a
@@ -62,13 +62,13 @@ sandwich xs y zs =
     Array.append (Array.push y xs) zs
 
 
-select : (a -> a -> Bool) -> a -> SelectionList a -> SelectionList a
-select areSame item list =
+select : a -> SelectionList a -> SelectionList a
+select item list =
     let
         items =
             Array.toList <| toArray list
     in
-        case partitionWithItem areSame item items of
+        case partitionWithItem item items of
             Nothing ->
                 list
 

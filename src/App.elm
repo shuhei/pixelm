@@ -252,14 +252,14 @@ update msg model =
             )
 
         SelectFrame frame ->
-            ( { model | frames = SelectionList.select (\a b -> a.id == b.id) frame model.frames }
+            ( { model | frames = SelectionList.select frame model.frames }
             , Cmd.none
             )
 
         DeleteFrame frame ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = SelectionList.deleteCurrent <| SelectionList.select (==) frame model.frames
+                , frames = SelectionList.deleteCurrent <| SelectionList.select frame model.frames
                 , modalConfig = NoModal
               }
             , Cmd.none
