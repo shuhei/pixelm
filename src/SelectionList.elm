@@ -9,6 +9,7 @@ module SelectionList
         , isSingle
         , get
         , toArray
+        , length
         )
 
 import Array exposing (Array)

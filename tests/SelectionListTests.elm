@@ -64,4 +64,14 @@ all =
                         fromLists [] 3 []
                     )
                     (fromLists [] 3 [])
+        , test "length for only current" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.length <| fromLists [] 3 [])
+                    1
+        , test "length with prev and next" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.length <| fromLists [ 1, 2 ] 3 [ 4, 5, 6 ])
+                    6
         ]

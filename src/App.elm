@@ -174,7 +174,7 @@ type Msg
     | MouseUpOnCanvas ( Int, Int )
     | MouseDownOnContainer
     | MouseUpOnContainer
-    | Tick Time
+    | Tick
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -309,9 +309,9 @@ update msg model =
             , Cmd.none
             )
 
-        Tick time ->
+        Tick ->
             ( { model
-                | frameIndex = (floor <| Time.inMilliseconds time) // model.fps
+                | frameIndex = (model.frameIndex + 1) % SelectionList.length model.frames
               }
             , Cmd.none
             )
@@ -658,7 +658,7 @@ svgIcon path =
 
 tick : Model -> Sub Msg
 tick model =
-    Time.every (1000 / (60 / toFloat model.fps) * Time.millisecond) Tick
+    Time.every (1000 / (60 / toFloat model.fps) * Time.millisecond) (\_ -> Tick)
 
 
 main : Program ImagePaths Model Msg
