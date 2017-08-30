@@ -30,11 +30,15 @@ decodeOffset =
         (Json.field "offsetTop" Json.int)
 
 
+
+-- Android's Touch.clientX/Y are float instead of int
+
+
 decodeClientPos : Json.Decoder ( Int, Int )
 decodeClientPos =
     Json.map2 (,)
-        (Json.field "clientX" Json.int)
-        (Json.field "clientY" Json.int)
+        (Json.map floor <| Json.field "clientX" Json.float)
+        (Json.map floor <| Json.field "clientY" Json.float)
 
 
 decodeMouseEvent : (( Int, Int ) -> msg) -> Json.Decoder msg
