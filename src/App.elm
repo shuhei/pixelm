@@ -184,7 +184,7 @@ type Msg
     | CloseModal
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
-    | MouseUpOnCanvas ( Int, Int )
+    | MouseUpOnCanvas
     | MouseDownOnContainer
     | MouseUpOnContainer
     | Tick
@@ -304,18 +304,13 @@ update msg model =
                 else
                     ( model, Cmd.none )
 
-        MouseUpOnCanvas pos ->
-            let
-                pixelPos =
-                    getPixelPos pos
-            in
-                ( { model
-                    | frames = updateCurrentFrame pixelPos model
-                    , isMouseDown = False
-                    , previousMouseDown = Nothing
-                  }
-                , Cmd.none
-                )
+        MouseUpOnCanvas ->
+            ( { model
+                | isMouseDown = False
+                , previousMouseDown = Nothing
+              }
+            , Cmd.none
+            )
 
         MouseDownOnContainer ->
             ( { model
@@ -444,10 +439,10 @@ viewGrid grid =
         , sizeStyle (resolution * pixelSize)
         , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
-        , Events.onWithStopAndPrevent "mouseup" <| Events.decodeMouseEvent MouseUpOnCanvas
+        , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
         , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
-        , Events.onWithStopAndPrevent "touchend" <| Events.decodeTouchEvent MouseUpOnCanvas
+        , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
         ]
         [ Svg.svg
             [ SA.class "pixel-grid"
