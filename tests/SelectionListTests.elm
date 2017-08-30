@@ -22,24 +22,24 @@ all =
                 Expect.equal
                     (SelectionList.init 123)
                     (fromLists [] 123 [])
-        , test "selectCurrent on previous" <|
+        , test "select on previous" <|
             \() ->
                 Expect.equal
-                    (SelectionList.selectCurrent 2 <|
+                    (SelectionList.select (==) 2 <|
                         fromLists [ 1, 2 ] 3 [ 4, 5 ]
                     )
                     (fromLists [ 1 ] 2 [ 3, 4, 5 ])
-        , test "selectCurrent on current" <|
+        , test "select on current" <|
             \() ->
                 Expect.equal
-                    (SelectionList.selectCurrent 3 <|
+                    (SelectionList.select (==) 3 <|
                         fromLists [ 1, 2 ] 3 [ 4, 5 ]
                     )
                     (fromLists [ 1, 2 ] 3 [ 4, 5 ])
-        , test "selectCurrent on next" <|
+        , test "select on next" <|
             \() ->
                 Expect.equal
-                    (SelectionList.selectCurrent 4 <|
+                    (SelectionList.select (==) 4 <|
                         fromLists [ 1, 2 ] 3 [ 4, 5 ]
                     )
                     (fromLists [ 1, 2, 3 ] 4 [ 5 ])

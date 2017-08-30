@@ -56,8 +56,14 @@ type alias Grid =
     Array2 Color
 
 
+type alias Frame =
+    { id : Int
+    , grid : Grid
+    }
+
+
 type alias Frames =
-    SelectionList Grid
+    SelectionList Frame
 
 
 type alias ImagePaths =
@@ -74,7 +80,7 @@ type alias ImagePaths =
 
 type ModalConfig
     = NoModal
-    | FrameModal Grid
+    | FrameModal Frame
 
 
 type alias Model =
@@ -85,6 +91,7 @@ type alias Model =
     , colors : List Color
     , history : History Frames
     , frames : Frames
+    , frameSequence : Int
     , fps : Int
     , frameIndex : Int
     , images : ImagePaths
@@ -133,6 +140,11 @@ colors =
     ]
 
 
+initialFrameSequence : Int
+initialFrameSequence =
+    0
+
+
 init : ImagePaths -> ( Model, Cmd Msg )
 init flags =
     let
@@ -143,7 +155,8 @@ init flags =
             , foregroundColor = Color.black
             , colors = colors
             , history = History.initialize 20
-            , frames = SelectionList.init emptyGrid
+            , frames = SelectionList.init <| Frame initialFrameSequence emptyGrid
+            , frameSequence = initialFrameSequence + 1
             , fps = 10
             , frameIndex = 0
             , images = flags
@@ -165,9 +178,9 @@ type Msg
     | AddFrame
     | Undo
     | Download
-    | SelectFrame Grid
-    | DeleteFrame Grid
-    | ShowFrameModal Grid
+    | SelectFrame Frame
+    | DeleteFrame Frame
+    | ShowFrameModal Frame
     | CloseModal
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
@@ -201,14 +214,22 @@ update msg model =
         ClearCanvas ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = SelectionList.updateCurrent emptyGrid model.frames
+                , frames =
+                    SelectionList.updateCurrent
+                        (\frame -> { frame | grid = emptyGrid })
+                        model.frames
               }
             , Cmd.none
             )
 
         AddFrame ->
             ( { model
-                | frames = SelectionList.append emptyGrid model.frames
+                | history = History.push model.frames model.history
+                , frames =
+                    SelectionList.append
+                        { id = model.frameSequence, grid = emptyGrid }
+                        model.frames
+                , frameSequence = model.frameSequence + 1
               }
             , Cmd.none
             )
@@ -227,25 +248,25 @@ update msg model =
 
         Download ->
             ( model
-            , download <| Array.map (Array2.map Color.toRgb) <| SelectionList.toArray model.frames
+            , download <| Array.map (Array2.map Color.toRgb << .grid) <| SelectionList.toArray model.frames
             )
 
         SelectFrame frame ->
-            ( { model | frames = SelectionList.selectCurrent frame model.frames }
+            ( { model | frames = SelectionList.select (\a b -> a.id == b.id) frame model.frames }
             , Cmd.none
             )
 
-        DeleteFrame grid ->
+        DeleteFrame frame ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = SelectionList.deleteCurrent <| SelectionList.selectCurrent grid model.frames
+                , frames = SelectionList.deleteCurrent <| SelectionList.select (==) frame model.frames
                 , modalConfig = NoModal
               }
             , Cmd.none
             )
 
-        ShowFrameModal grid ->
-            ( { model | modalConfig = FrameModal grid }
+        ShowFrameModal frame ->
+            ( { model | modalConfig = FrameModal frame }
             , Cmd.none
             )
 
@@ -328,33 +349,33 @@ updateCurrentFrame ( col, row ) model =
         frames =
             model.frames
 
-        current =
-            frames.current
-
-        updated =
+        update frame =
             case model.mode of
                 Paint ->
-                    Array2.set col row model.foregroundColor current
+                    { frame | grid = Array2.set col row model.foregroundColor frame.grid }
 
                 Eraser ->
-                    Array2.set col row ColorUtil.transparent current
+                    { frame | grid = Array2.set col row ColorUtil.transparent frame.grid }
 
                 Bucket ->
-                    Array2.fill col row model.foregroundColor current
+                    { frame | grid = Array2.fill col row model.foregroundColor frame.grid }
 
                 Move ->
                     case model.previousMouseDown of
                         Nothing ->
-                            current
+                            frame
 
                         Just ( prevCol, prevRow ) ->
-                            Array2.move
-                                (col - prevCol)
-                                (row - prevRow)
-                                ColorUtil.transparent
-                                current
+                            { frame
+                                | grid =
+                                    Array2.move
+                                        (col - prevCol)
+                                        (row - prevRow)
+                                        ColorUtil.transparent
+                                        frame.grid
+                            }
     in
-        { frames | current = updated }
+        { frames | current = update frames.current }
 
 
 port download : Array (Array2 RGBA) -> Cmd msg
@@ -370,7 +391,7 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.frames.current
+        [ viewGrid model.frames.current.grid
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
@@ -549,13 +570,13 @@ viewColor attrs color =
         Html.div attributes []
 
 
-usedColors : List Grid -> List Color
-usedColors grids =
+usedColors : List Frame -> List Color
+usedColors frames =
     let
         putColor c used =
             Dict.insert (ColorUtil.toColorString c) c used
     in
-        List.foldr (\grid used -> Array2.foldr putColor used grid) Dict.empty grids
+        List.foldr (\frame used -> Array2.foldr putColor used frame.grid) Dict.empty frames
             |> Dict.values
             |> List.filter (\x -> x /= ColorUtil.transparent)
 
@@ -583,8 +604,8 @@ viewFrames images index frames =
             ]
 
 
-viewFrame : FrameType -> Grid -> Html Msg
-viewFrame frameType grid =
+viewFrame : FrameType -> Frame -> Html Msg
+viewFrame frameType frame =
     let
         canvasSize =
             resolution * framePixelSize
@@ -602,8 +623,8 @@ viewFrame frameType grid =
                 , if frameType == FramePreview then
                     []
                   else
-                    [ HE.onClick <| SelectFrame grid
-                    , HE.onDoubleClick <| ShowFrameModal grid
+                    [ HE.onClick <| SelectFrame frame
+                    , HE.onDoubleClick <| ShowFrameModal frame
                     ]
                 ]
     in
@@ -613,7 +634,7 @@ viewFrame frameType grid =
                 [ SA.width <| toString canvasSize
                 , SA.height <| toString canvasSize
                 ]
-                [ viewRects framePixelSize grid
+                [ viewRects framePixelSize frame.grid
                 ]
             ]
 
