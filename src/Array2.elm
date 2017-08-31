@@ -1,6 +1,6 @@
 module Array2 exposing (..)
 
-import Array exposing (Array)
+import Array.Hamt as Array exposing (Array)
 import Set
 
 
