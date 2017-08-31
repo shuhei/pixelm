@@ -391,33 +391,40 @@ view model =
         , viewColorSelector model.foregroundColor model.colors <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
         , viewFrames model.images model.frameIndex model.frames
-        , viewModal model.modalConfig
+        , viewModal model.modalConfig <| SelectionList.isSingle model.frames
         ]
 
 
-viewModal : ModalConfig -> Html Msg
-viewModal config =
+viewModal : ModalConfig -> Bool -> Html Msg
+viewModal config isSingleFrame =
     let
+        deleteButton frame =
+            Html.button
+                [ HA.class "modal-button modal-button--primary"
+                , Events.onWithStopAndPrevent "click" <| Json.succeed (DeleteFrame frame)
+                ]
+                [ Html.text "Delete Frame" ]
+
+        closeButton =
+            Html.button
+                [ HA.class "modal-button modal-button--default"
+                , Events.onWithStopAndPrevent "click" <| Json.succeed CloseModal
+                ]
+                [ Html.text "Close" ]
+
+        buttons frame =
+            if isSingleFrame then
+                [ closeButton ]
+            else
+                [ deleteButton frame, closeButton ]
+
         content =
             case config of
                 NoModal ->
                     []
 
                 FrameModal frame ->
-                    [ Html.p
-                        []
-                        [ Html.button
-                            [ HA.class "modal-button modal-button--primary"
-                            , Events.onWithStopAndPrevent "click" <| Json.succeed (DeleteFrame frame)
-                            ]
-                            [ Html.text "Delete Frame" ]
-                        , Html.button
-                            [ HA.class "modal-button modal-button--default"
-                            , Events.onWithStopAndPrevent "click" <| Json.succeed CloseModal
-                            ]
-                            [ Html.text "Close" ]
-                        ]
-                    ]
+                    [ Html.p [] <| buttons frame ]
     in
         Html.div
             [ HA.classList
