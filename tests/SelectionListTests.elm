@@ -3,7 +3,7 @@ module SelectionListTests exposing (..)
 import Test exposing (..)
 import Expect
 import SelectionList exposing (SelectionList)
-import Array
+import Array.Hamt as Array exposing (Array)
 
 
 fromLists : List a -> a -> List a -> SelectionList a

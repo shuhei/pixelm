@@ -1,6 +1,6 @@
 port module App exposing (..)
 
-import Array exposing (Array)
+import Array.Hamt as Array exposing (Array)
 import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
@@ -74,6 +74,7 @@ type alias ImagePaths =
     , trash : String
     , plus : String
     , undo : String
+    , redo : String
     , download : String
     }
 
@@ -154,7 +155,7 @@ init flags =
             , previousMouseDown = Nothing
             , foregroundColor = Color.black
             , colors = colors
-            , history = History.initialize 20
+            , history = History.initialize 50
             , frames = SelectionList.init <| Frame initialFrameSequence emptyGrid
             , frameSequence = initialFrameSequence + 1
             , fps = 10
@@ -177,6 +178,7 @@ type Msg
     | ClearCanvas
     | AddFrame
     | Undo
+    | Redo
     | Download
     | SelectFrame Frame
     | DeleteFrame Frame
@@ -238,7 +240,19 @@ update msg model =
         Undo ->
             let
                 ( frames, history ) =
-                    History.pop model.history
+                    History.undo model.frames model.history
+            in
+                ( { model
+                    | history = history
+                    , frames = Maybe.withDefault model.frames frames
+                  }
+                , Cmd.none
+                )
+
+        Redo ->
+            let
+                ( frames, history ) =
+                    History.redo model.frames model.history
             in
                 ( { model
                     | history = history
@@ -248,9 +262,12 @@ update msg model =
                 )
 
         Download ->
-            ( model
-            , download <| Array.map (Array2.map Color.toRgb << .grid) <| SelectionList.toArray model.frames
-            )
+            let
+                data =
+                    List.map (Array2.toList2 << Array2.map Color.toRgb << .grid) <|
+                        SelectionList.toList model.frames
+            in
+                ( model, download data )
 
         SelectFrame frame ->
             ( { model | frames = SelectionList.select frame model.frames }
@@ -389,7 +406,7 @@ updateCurrentFrame ( col, row ) model =
         { frames | current = update frames.current }
 
 
-port download : Array (Array2 RGBA) -> Cmd msg
+port download : List (List (List RGBA)) -> Cmd msg
 
 
 
@@ -565,6 +582,7 @@ viewMenus selectedMode images =
             , modeMenu Move "Move" <| svgIcon images.move
             , menu False ClearCanvas "Clear" <| svgIcon images.trash
             , menu False Undo "Undo" <| svgIcon images.undo
+            , menu False Redo "Redo" <| svgIcon images.redo
             , menu False Download "Download" <| svgIcon images.download
             ]
 

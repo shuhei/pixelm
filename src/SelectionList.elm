@@ -10,10 +10,11 @@ module SelectionList
         , isSingle
         , get
         , toArray
+        , toList
         , length
         )
 
-import Array exposing (Array)
+import Array.Hamt as Array exposing (Array)
 
 
 type alias SelectionList a =
@@ -145,3 +146,8 @@ get index list =
 toArray : SelectionList a -> Array a
 toArray list =
     sandwich list.previous list.current list.next
+
+
+toList : SelectionList a -> List a
+toList list =
+    Array.toList <| toArray list
