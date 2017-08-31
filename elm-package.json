@@ -1,7 +1,8 @@
 {
     "version": "1.0.0",
-    "summary": "helpful summary of your project, less than 80 characters",
-    "repository": "https://github.com/user/project.git",
+    "summary": "A pixel art editor written in Elm",
+    "repository": "https://github.com/shuhei/pixelm.git",
+    "homepage": "https://shuheikagawa.com/pixelm/",
     "license": "BSD3",
     "source-directories": [
         ".",
