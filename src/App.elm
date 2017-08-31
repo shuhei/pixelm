@@ -180,6 +180,7 @@ type Msg
     | Download
     | SelectFrame Frame
     | DeleteFrame Frame
+    | DuplicateFrame Frame
     | ShowFrameModal Frame
     | CloseModal
     | MouseDownOnCanvas ( Int, Int )
@@ -264,6 +265,20 @@ update msg model =
               }
             , Cmd.none
             )
+
+        DuplicateFrame frame ->
+            let
+                copy =
+                    { frame | id = model.frameSequence }
+            in
+                ( { model
+                    | history = History.push model.frames model.history
+                    , frames = SelectionList.insertAfterCurrent copy model.frames
+                    , frameSequence = model.frameSequence + 1
+                    , modalConfig = NoModal
+                  }
+                , Cmd.none
+                )
 
         ShowFrameModal frame ->
             ( { model | modalConfig = FrameModal frame }
@@ -405,6 +420,13 @@ viewModal config isSingleFrame =
                 ]
                 [ Html.text "Delete Frame" ]
 
+        duplicateButton frame =
+            Html.button
+                [ HA.class "modal-button modal-button--primary"
+                , Events.onWithStopAndPrevent "click" <| Json.succeed (DuplicateFrame frame)
+                ]
+                [ Html.text "Duplicate Frame" ]
+
         closeButton =
             Html.button
                 [ HA.class "modal-button modal-button--default"
@@ -414,9 +436,9 @@ viewModal config isSingleFrame =
 
         buttons frame =
             if isSingleFrame then
-                [ closeButton ]
+                [ duplicateButton frame, closeButton ]
             else
-                [ deleteButton frame, closeButton ]
+                [ duplicateButton frame, deleteButton frame, closeButton ]
 
         content =
             case config of

@@ -5,6 +5,7 @@ module SelectionList
         , select
         , updateCurrent
         , deleteCurrent
+        , insertAfterCurrent
         , append
         , isSingle
         , get
@@ -103,6 +104,14 @@ deleteCurrent list =
 
                 Nothing ->
                     list
+
+
+insertAfterCurrent : a -> SelectionList a -> SelectionList a
+insertAfterCurrent item list =
+    { list
+        | previous = Array.push item list.previous
+        , current = item
+    }
 
 
 isSingle : SelectionList a -> Bool
