@@ -12,7 +12,6 @@ os:
 env:
   matrix:
     - TARGET_NODE_VERSION=node
-    - TARGET_NODE_VERSION=4.0
 
 before_install:
   - if [ ${TRAVIS_OS_NAME} == "osx" ];
