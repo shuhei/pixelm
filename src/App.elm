@@ -273,7 +273,8 @@ update msg model =
             in
                 ( { model
                     | history = History.push model.frames model.history
-                    , frames = SelectionList.insertAfterCurrent copy model.frames
+                    , frames =
+                        SelectionList.insertAfterCurrent copy <| SelectionList.select frame model.frames
                     , frameSequence = model.frameSequence + 1
                     , modalConfig = NoModal
                   }

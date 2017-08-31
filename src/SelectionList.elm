@@ -109,7 +109,7 @@ deleteCurrent list =
 insertAfterCurrent : a -> SelectionList a -> SelectionList a
 insertAfterCurrent item list =
     { list
-        | previous = Array.push item list.previous
+        | previous = Array.push list.current list.previous
         , current = item
     }
 

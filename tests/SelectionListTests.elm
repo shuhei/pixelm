@@ -25,21 +25,21 @@ all =
         , test "select on previous" <|
             \() ->
                 Expect.equal
-                    (SelectionList.select (==) 2 <|
+                    (SelectionList.select 2 <|
                         fromLists [ 1, 2 ] 3 [ 4, 5 ]
                     )
                     (fromLists [ 1 ] 2 [ 3, 4, 5 ])
         , test "select on current" <|
             \() ->
                 Expect.equal
-                    (SelectionList.select (==) 3 <|
+                    (SelectionList.select 3 <|
                         fromLists [ 1, 2 ] 3 [ 4, 5 ]
                     )
                     (fromLists [ 1, 2 ] 3 [ 4, 5 ])
         , test "select on next" <|
             \() ->
                 Expect.equal
-                    (SelectionList.select (==) 4 <|
+                    (SelectionList.select 4 <|
                         fromLists [ 1, 2 ] 3 [ 4, 5 ]
                     )
                     (fromLists [ 1, 2, 3 ] 4 [ 5 ])
@@ -74,4 +74,10 @@ all =
                 Expect.equal
                     (SelectionList.length <| fromLists [ 1, 2 ] 3 [ 4, 5, 6 ])
                     6
+        , test "insertAfterCurrent" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.insertAfterCurrent 8 <| fromLists [ 1, 2 ] 3 [ 4, 5, 6 ])
+                <|
+                    fromLists [ 1, 2, 3 ] 8 [ 4, 5, 6 ]
         ]
