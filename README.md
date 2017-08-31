@@ -1,4 +1,4 @@
-# Pixelm
+# Pixelm [![Build Status](https://travis-ci.org/shuhei/pixelm.svg?branch=master)](https://travis-ci.org/shuhei/pixelm)
 
 A pixel art editor written in Elm
 
