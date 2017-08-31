@@ -74,6 +74,7 @@ type alias ImagePaths =
     , trash : String
     , plus : String
     , undo : String
+    , redo : String
     , download : String
     }
 
@@ -581,7 +582,7 @@ viewMenus selectedMode images =
             , modeMenu Move "Move" <| svgIcon images.move
             , menu False ClearCanvas "Clear" <| svgIcon images.trash
             , menu False Undo "Undo" <| svgIcon images.undo
-            , menu False Redo "Redo" <| svgIcon images.undo
+            , menu False Redo "Redo" <| svgIcon images.redo
             , menu False Download "Download" <| svgIcon images.download
             ]
 
