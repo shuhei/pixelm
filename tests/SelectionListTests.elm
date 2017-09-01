@@ -80,4 +80,36 @@ all =
                     (SelectionList.insertAfterCurrent 8 <| fromLists [ 1, 2 ] 3 [ 4, 5, 6 ])
                 <|
                     fromLists [ 1, 2, 3 ] 8 [ 4, 5, 6 ]
+        , test "swapCurrent on previous" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.swapCurrent 2 <|
+                        fromLists [ 1, 2 ] 3 [ 4, 5, 6 ]
+                    )
+                <|
+                    fromLists [ 1 ] 3 [ 2, 4, 5, 6 ]
+        , test "swapCurrent on next" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.swapCurrent 5 <|
+                        fromLists [ 1, 2 ] 3 [ 4, 5, 6 ]
+                    )
+                <|
+                    fromLists [ 1, 2, 5, 4 ] 3 [ 6 ]
+        , test "swapCurrent on current" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.swapCurrent 3 <|
+                        fromLists [ 1, 2 ] 3 [ 4, 5, 6 ]
+                    )
+                <|
+                    fromLists [ 1, 2 ] 3 [ 4, 5, 6 ]
+        , test "swapCurrent not found" <|
+            \() ->
+                Expect.equal
+                    (SelectionList.swapCurrent 8 <|
+                        fromLists [ 1, 2 ] 3 [ 4, 5, 6 ]
+                    )
+                <|
+                    fromLists [ 1, 2 ] 3 [ 4, 5, 6 ]
         ]

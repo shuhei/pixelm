@@ -190,6 +190,7 @@ type Msg
     | MouseUpOnCanvas
     | MouseDownOnContainer
     | MouseUpOnContainer
+    | DropOnFrame Frame
     | Tick
 
 
@@ -355,6 +356,11 @@ update msg model =
 
         MouseUpOnContainer ->
             ( { model | isMouseDown = False, previousMouseDown = Nothing }
+            , Cmd.none
+            )
+
+        DropOnFrame frame ->
+            ( { model | frames = SelectionList.swapCurrent frame model.frames }
             , Cmd.none
             )
 
@@ -647,6 +653,32 @@ viewFrames images index frames =
             ]
 
 
+
+-- https://medium.com/elm-shorts/html5-drag-and-drop-in-elm-88d149d3558f
+
+
+allowDrop : Html.Attribute msg
+allowDrop =
+    HA.attribute "onDragOver" "event.preventDefault()"
+
+
+prevent : HE.Options
+prevent =
+    { preventDefault = True
+    , stopPropagation = False
+    }
+
+
+onDragStart : msg -> Html.Attribute msg
+onDragStart msg =
+    HE.on "dragstart" <| Json.succeed msg
+
+
+onDrop : msg -> Html.Attribute msg
+onDrop msg =
+    HE.onWithOptions "drop" prevent <| Json.succeed msg
+
+
 viewFrame : FrameType -> Frame -> Html Msg
 viewFrame frameType frame =
     let
@@ -661,6 +693,14 @@ viewFrame frameType frame =
                         , ( "frame--selected", frameType == FrameSelected )
                         , ( "frame--preview", frameType == FramePreview )
                         ]
+                  , HA.draggable <|
+                        if frameType == FrameNormal || frameType == FrameSelected then
+                            "true"
+                        else
+                            "false"
+                  , allowDrop
+                  , onDragStart <| SelectFrame frame
+                  , onDrop <| DropOnFrame frame
                   , sizeStyle canvasSize
                   ]
                 , if frameType == FramePreview then

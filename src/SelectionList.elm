@@ -5,6 +5,7 @@ module SelectionList
         , select
         , updateCurrent
         , deleteCurrent
+        , swapCurrent
         , insertAfterCurrent
         , append
         , isSingle
@@ -151,3 +152,24 @@ toArray list =
 toList : SelectionList a -> List a
 toList list =
     Array.toList <| toArray list
+
+
+swapCurrent : a -> SelectionList a -> SelectionList a
+swapCurrent item list =
+    case partitionWithItem item (Array.toList list.previous) of
+        Nothing ->
+            case partitionWithItem item (Array.toList list.next) of
+                Nothing ->
+                    list
+
+                Just ( xs, ys ) ->
+                    { list
+                        | previous = sandwich list.previous item (Array.fromList xs)
+                        , next = Array.fromList ys
+                    }
+
+        Just ( xs, ys ) ->
+            { list
+                | previous = Array.fromList xs
+                , next = sandwich (Array.fromList ys) item list.next
+            }
