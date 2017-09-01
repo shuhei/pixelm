@@ -653,32 +653,6 @@ viewFrames images index frames =
             ]
 
 
-
--- https://medium.com/elm-shorts/html5-drag-and-drop-in-elm-88d149d3558f
-
-
-allowDrop : Html.Attribute msg
-allowDrop =
-    HA.attribute "onDragOver" "event.preventDefault()"
-
-
-prevent : HE.Options
-prevent =
-    { preventDefault = True
-    , stopPropagation = False
-    }
-
-
-onDragStart : msg -> Html.Attribute msg
-onDragStart msg =
-    HE.on "dragstart" <| Json.succeed msg
-
-
-onDrop : msg -> Html.Attribute msg
-onDrop msg =
-    HE.onWithOptions "drop" prevent <| Json.succeed msg
-
-
 viewFrame : FrameType -> Frame -> Html Msg
 viewFrame frameType frame =
     let
@@ -698,9 +672,9 @@ viewFrame frameType frame =
                             "true"
                         else
                             "false"
-                  , allowDrop
-                  , onDragStart <| SelectFrame frame
-                  , onDrop <| DropOnFrame frame
+                  , Events.allowDrop
+                  , Events.onDragStart <| SelectFrame frame
+                  , Events.onDrop <| DropOnFrame frame
                   , sizeStyle canvasSize
                   ]
                 , if frameType == FramePreview then

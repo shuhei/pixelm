@@ -1,8 +1,17 @@
-module Events exposing (decodeMouseEvent, decodeTouchEvent, onWithStopAndPrevent)
+module Events
+    exposing
+        ( decodeMouseEvent
+        , decodeTouchEvent
+        , onWithStopAndPrevent
+        , onDragStart
+        , onDrop
+        , allowDrop
+        )
 
 import Json.Decode as Json
 import Html
 import Html.Events as HE
+import Html.Attributes as HA
 
 
 minusPos : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
@@ -58,6 +67,28 @@ stopAndPrevent =
     }
 
 
+prevent : HE.Options
+prevent =
+    { preventDefault = True
+    , stopPropagation = False
+    }
+
+
 onWithStopAndPrevent : String -> Json.Decoder msg -> Html.Attribute msg
 onWithStopAndPrevent eventName decoder =
     HE.onWithOptions eventName stopAndPrevent decoder
+
+
+allowDrop : Html.Attribute msg
+allowDrop =
+    HA.attribute "onDragOver" "event.preventDefault()"
+
+
+onDragStart : msg -> Html.Attribute msg
+onDragStart msg =
+    HE.on "dragstart" <| Json.succeed msg
+
+
+onDrop : msg -> Html.Attribute msg
+onDrop msg =
+    HE.onWithOptions "drop" prevent <| Json.succeed msg
