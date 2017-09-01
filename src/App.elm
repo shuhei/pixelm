@@ -360,7 +360,10 @@ update msg model =
             )
 
         DropOnFrame frame ->
-            ( { model | frames = SelectionList.swapCurrent frame model.frames }
+            ( { model
+                | history = History.push model.frames model.history
+                , frames = SelectionList.swapCurrent frame model.frames
+              }
             , Cmd.none
             )
 
