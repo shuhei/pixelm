@@ -126,23 +126,30 @@ prepareScript =
 
 onSingleOrDoubleClick : msg -> msg -> Html.Attribute msg
 onSingleOrDoubleClick singleMessage doubleMessage =
-    HE.on "click" <|
-        Json.oneOf
-            [ decodeClicked doubleMessage
-            , Json.succeed singleMessage
-            ]
+    let
+        decodeDoubleOrNot =
+            Json.oneOf
+                [ decodeClicked
+                , Json.succeed False
+                ]
+
+        getMessage isDoubleClick =
+            if isDoubleClick then
+                doubleMessage
+            else
+                singleMessage
+    in
+        HE.on "click" <|
+            Json.map getMessage decodeDoubleOrNot
 
 
-decodeClicked : msg -> Json.Decoder msg
-decodeClicked msg =
+decodeClicked : Json.Decoder Bool
+decodeClicked =
     let
         decodeClicked =
             Json.field "dataset" <| Json.field "clicked" Json.string
 
         isTrue x =
-            if x == "true" then
-                Json.succeed msg
-            else
-                Json.fail "not clicked"
+            x == "true"
     in
-        Json.andThen isTrue <| Json.field "currentTarget" decodeClicked
+        Json.map isTrue <| Json.field "currentTarget" decodeClicked
