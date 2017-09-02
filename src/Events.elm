@@ -139,7 +139,7 @@ onSingleOrDoubleClick singleMessage doubleMessage =
             else
                 singleMessage
     in
-        HE.on "click" <|
+        HE.onWithOptions "click" prevent <|
             Json.map getMessage decodeDoubleOrNot
 
 
