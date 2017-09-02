@@ -82,6 +82,7 @@ type alias ImagePaths =
 type ModalConfig
     = NoModal
     | FrameModal Frame
+    | DownloadModal
 
 
 type alias Model =
@@ -167,6 +168,12 @@ init flags =
         ( model, Cmd.none )
 
 
+type DownloadFormat
+    = SVGFormat
+    | GIFFormat
+    | AnimatedGIFFormat
+
+
 
 ---- UPDATE ----
 
@@ -179,11 +186,12 @@ type Msg
     | AddFrame
     | Undo
     | Redo
-    | Download
+    | Download DownloadFormat
     | SelectFrame Frame
     | DeleteFrame Frame
     | DuplicateFrame Frame
     | ShowFrameModal Frame
+    | ShowDownloadModal
     | CloseModal
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
@@ -262,13 +270,27 @@ update msg model =
                 , Cmd.none
                 )
 
-        Download ->
+        Download format ->
             let
                 data =
-                    List.map (Array2.toList2 << Array2.map Color.toRgb << .grid) <|
-                        SelectionList.toList model.frames
+                    { grids =
+                        List.map (Array2.toList2 << Array2.map Color.toRgb << .grid) <|
+                            SelectionList.toList model.frames
+                    , format =
+                        case format of
+                            SVGFormat ->
+                                "svg"
+
+                            GIFFormat ->
+                                "gif"
+
+                            AnimatedGIFFormat ->
+                                "animated-gif"
+                    }
             in
-                ( model, download data )
+                ( { model | modalConfig = NoModal }
+                , download data
+                )
 
         SelectFrame frame ->
             ( { model | frames = SelectionList.select frame model.frames }
@@ -301,6 +323,11 @@ update msg model =
 
         ShowFrameModal frame ->
             ( { model | modalConfig = FrameModal frame }
+            , Cmd.none
+            )
+
+        ShowDownloadModal ->
+            ( { model | modalConfig = DownloadModal }
             , Cmd.none
             )
 
@@ -415,7 +442,13 @@ updateCurrentFrame ( col, row ) model =
         { frames | current = update frames.current }
 
 
-port download : List (List (List RGBA)) -> Cmd msg
+type alias DownloadData =
+    { grids : List (List (List RGBA))
+    , format : String
+    }
+
+
+port download : DownloadData -> Cmd msg
 
 
 
@@ -440,40 +473,43 @@ view model =
 viewModal : ModalConfig -> Bool -> Html Msg
 viewModal config isSingleFrame =
     let
-        deleteButton frame =
+        viewButton style text msg =
             Html.button
-                [ HA.class "modal-button modal-button--primary"
-                , Events.onWithStopAndPrevent "click" <| Json.succeed (DeleteFrame frame)
+                [ HA.class <| "modal-button modal-button--" ++ style
+                , Events.onWithStopAndPrevent "click" <| Json.succeed msg
                 ]
-                [ Html.text "Delete Frame" ]
+                [ Html.text text ]
+
+        deleteButton frame =
+            viewButton "primary" "Delete Frame" <| DeleteFrame frame
 
         duplicateButton frame =
-            Html.button
-                [ HA.class "modal-button modal-button--primary"
-                , Events.onWithStopAndPrevent "click" <| Json.succeed (DuplicateFrame frame)
-                ]
-                [ Html.text "Duplicate Frame" ]
+            viewButton "primary" "Duplicate Frame" <| DuplicateFrame frame
 
         closeButton =
-            Html.button
-                [ HA.class "modal-button modal-button--default"
-                , Events.onWithStopAndPrevent "click" <| Json.succeed CloseModal
-                ]
-                [ Html.text "Close" ]
-
-        buttons frame =
-            if isSingleFrame then
-                [ duplicateButton frame, closeButton ]
-            else
-                [ duplicateButton frame, deleteButton frame, closeButton ]
+            viewButton "default" "Close" CloseModal
 
         content =
             case config of
                 NoModal ->
                     []
 
+                DownloadModal ->
+                    if isSingleFrame then
+                        [ viewButton "primary" "SVG" <| Download SVGFormat
+                        , viewButton "primary" "GIF" <| Download GIFFormat
+                        , closeButton
+                        ]
+                    else
+                        [ viewButton "primary" "Animated GIF" <| Download AnimatedGIFFormat
+                        , closeButton
+                        ]
+
                 FrameModal frame ->
-                    [ Html.p [] <| buttons frame ]
+                    if isSingleFrame then
+                        [ duplicateButton frame, closeButton ]
+                    else
+                        [ duplicateButton frame, deleteButton frame, closeButton ]
     in
         Html.div
             [ HA.classList
@@ -592,7 +628,7 @@ viewMenus selectedMode images =
             , menu False ClearCanvas "Clear" <| svgIcon images.trash
             , menu False Undo "Undo" <| svgIcon images.undo
             , menu False Redo "Redo" <| svgIcon images.redo
-            , menu False Download "Download" <| svgIcon images.download
+            , menu False ShowDownloadModal "Download" <| svgIcon images.download
             ]
 
 

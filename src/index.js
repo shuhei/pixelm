@@ -21,12 +21,17 @@ var app = Elm.App.embed(root, {
   redo: require('./images/redo.svg'),
   download: require('./images/download.svg')
 });
-app.ports.download.subscribe(function (grids) {
-  if (grids.length === 1) {
-    exportSvg(grids[0]);
-    exportGif(grids[0]);
-  } else if (grids.length > 1) {
-    exportAnimatedGif(grids);
+app.ports.download.subscribe(function (data) {
+  switch (data.format) {
+    case 'svg':
+      exportSvg(data.grids[0]);
+      break;
+    case 'gif':
+      exportGif(data.grids[0]);
+      break;
+    case 'animated-gif':
+      exportAnimatedGif(data.grids);
+      break;
   }
 });
 
