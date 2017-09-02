@@ -10,6 +10,8 @@ A pixel art editor written in Elm
 - Animation
 - Export to PNG, GIF and animated GIF
 
+![pixelm](screenshot.png)
+
 ## Development
 
 Install:
