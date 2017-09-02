@@ -39,7 +39,7 @@ npm test
 Build assets for production:
 
 ```sh
-npm build
+npm run build
 ```
 
 Deploy to GitHub Pages:
