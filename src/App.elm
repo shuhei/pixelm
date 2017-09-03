@@ -711,15 +711,6 @@ viewFrame frameType frame =
                         , ( "frame--selected", frameType == FrameSelected )
                         , ( "frame--preview", frameType == FramePreview )
                         ]
-                  , HA.draggable <|
-                        if frameType == FrameNormal || frameType == FrameSelected then
-                            "true"
-                        else
-                            "false"
-                  , Events.preventDefault "ondragenter"
-                  , Events.preventDefault "ondragover"
-                  , Events.onDragStart <| SelectFrame frame
-                  , Events.onDrop <| DropOnFrame frame
                   , sizeStyle canvasSize
                   ]
                 , if frameType == FramePreview then
@@ -727,6 +718,12 @@ viewFrame frameType frame =
                   else
                     [ Events.onSingleOrDoubleClick (SelectFrame frame) (ShowFrameModal frame)
                     , Events.prepareDoubleClick
+                    , HA.draggable "true"
+                    , Events.preventDefault "ondragenter"
+                    , Events.preventDefault "ondragover"
+                    , Events.onDragStart <| SelectFrame frame
+                    , Events.onDrop <| DropOnFrame frame
+                    , Events.setDummyDragData
                     ]
                 ]
     in

@@ -8,6 +8,7 @@ module Events
         , preventDefault
         , prepareDoubleClick
         , onSingleOrDoubleClick
+        , setDummyDragData
         )
 
 import Json.Decode as Json
@@ -153,3 +154,14 @@ decodeClicked =
             x == "true"
     in
         Json.map isTrue <| Json.field "currentTarget" decodeClicked
+
+
+{-| Set dummy data to `event.dataTransfer` on dragstart event for cross-browser
+support.
+
+<https://github.com/timruffles/ios-html5-drag-drop-shim#cross-browser-differences-in-html5-dragndrop-api>
+
+-}
+setDummyDragData : Html.Attribute msg
+setDummyDragData =
+    HA.attribute "ondragstart" "event.dataTransfer.setData('text', 'dummy');"
