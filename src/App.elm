@@ -293,14 +293,18 @@ update msg model =
                 )
 
         SelectFrame frame ->
-            ( { model | frames = SelectionList.select frame model.frames }
+            ( { model
+                | frames = SelectionList.select frame model.frames
+              }
             , Cmd.none
             )
 
         DeleteFrame frame ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = SelectionList.deleteCurrent <| SelectionList.select frame model.frames
+                , frames =
+                    SelectionList.deleteCurrent <|
+                        SelectionList.select frame model.frames
                 , modalConfig = NoModal
               }
             , Cmd.none
@@ -314,7 +318,8 @@ update msg model =
                 ( { model
                     | history = History.push model.frames model.history
                     , frames =
-                        SelectionList.insertAfterCurrent copy <| SelectionList.select frame model.frames
+                        SelectionList.insertAfterCurrent copy <|
+                            SelectionList.select frame model.frames
                     , frameSequence = model.frameSequence + 1
                     , modalConfig = NoModal
                   }
@@ -719,8 +724,8 @@ viewFrame frameType frame =
                 , if frameType == FramePreview then
                     []
                   else
-                    [ HE.onClick <| SelectFrame frame
-                    , HE.onDoubleClick <| ShowFrameModal frame
+                    [ Events.onSingleOrDoubleClick (SelectFrame frame) (ShowFrameModal frame)
+                    , Events.prepareDoubleClick
                     ]
                 ]
     in

@@ -6,6 +6,8 @@ module Events
         , onDragStart
         , onDrop
         , allowDrop
+        , prepareDoubleClick
+        , onSingleOrDoubleClick
         )
 
 import Json.Decode as Json
@@ -39,10 +41,8 @@ decodeOffset =
         (Json.field "offsetTop" Json.int)
 
 
-
--- Android's Touch.clientX/Y are float instead of int
-
-
+{-| Android's Touch.clientX/Y are float instead of int.
+-}
 decodeClientPos : Json.Decoder ( Int, Int )
 decodeClientPos =
     Json.map2 (,)
@@ -81,7 +81,7 @@ onWithStopAndPrevent eventName decoder =
 
 allowDrop : Html.Attribute msg
 allowDrop =
-    HA.attribute "onDragOver" "event.preventDefault()"
+    HA.attribute "ondragover" "event.preventDefault()"
 
 
 onDragStart : msg -> Html.Attribute msg
@@ -92,3 +92,64 @@ onDragStart msg =
 onDrop : msg -> Html.Attribute msg
 onDrop msg =
     HE.onWithOptions "drop" prevent <| Json.succeed msg
+
+
+{-| HACK: Double tap support on iOS
+
+iOS does not support `dblclick` event. To detect double tap on iOS:
+
+  - `prepareDoubleClick` sets a flag to the clicked element's `dataset` and
+    deletes it in a short amount of time.
+  - `onSingleOrDoubleClick` uses a JSON decoder to check if the flag exists
+    and returns a message for double click if the flag exists. Otherwise it
+    just returns a message for single click.
+
+-}
+prepareDoubleClick : Html.Attribute msg
+prepareDoubleClick =
+    HA.attribute "onclick" prepareScript
+
+
+prepareScript : String
+prepareScript =
+    String.concat
+        [ "var el = event.currentTarget;"
+        , "setTimeout(function () {"
+        , "  if (el.dataset.timer) { clearTimeout(parseInt(el.dataset.timer, 10)); }"
+        , "  el.dataset.timer = setTimeout(function () {"
+        , "    delete el.dataset.clicked;"
+        , "  }, 500);"
+        , "  el.dataset.clicked = 'true';"
+        , "});"
+        ]
+
+
+onSingleOrDoubleClick : msg -> msg -> Html.Attribute msg
+onSingleOrDoubleClick singleMessage doubleMessage =
+    let
+        decodeDoubleOrNot =
+            Json.oneOf
+                [ decodeClicked
+                , Json.succeed False
+                ]
+
+        getMessage isDoubleClick =
+            if isDoubleClick then
+                doubleMessage
+            else
+                singleMessage
+    in
+        HE.onWithOptions "click" prevent <|
+            Json.map getMessage decodeDoubleOrNot
+
+
+decodeClicked : Json.Decoder Bool
+decodeClicked =
+    let
+        decodeClicked =
+            Json.field "dataset" <| Json.field "clicked" Json.string
+
+        isTrue x =
+            x == "true"
+    in
+        Json.map isTrue <| Json.field "currentTarget" decodeClicked
