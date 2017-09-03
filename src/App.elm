@@ -716,7 +716,8 @@ viewFrame frameType frame =
                             "true"
                         else
                             "false"
-                  , Events.allowDrop
+                  , Events.preventDefault "ondragenter"
+                  , Events.preventDefault "ondragover"
                   , Events.onDragStart <| SelectFrame frame
                   , Events.onDrop <| DropOnFrame frame
                   , sizeStyle canvasSize

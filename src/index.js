@@ -1,4 +1,5 @@
 require('blueimp-canvas-to-blob');
+require('mobile-drag-drop').polyfill();
 var fileSaver = require('file-saver');
 var GIF = require('gif.js');
 var Elm = require('./App.elm');

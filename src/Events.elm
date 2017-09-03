@@ -5,7 +5,7 @@ module Events
         , onWithStopAndPrevent
         , onDragStart
         , onDrop
-        , allowDrop
+        , preventDefault
         , prepareDoubleClick
         , onSingleOrDoubleClick
         )
@@ -79,9 +79,9 @@ onWithStopAndPrevent eventName decoder =
     HE.onWithOptions eventName stopAndPrevent decoder
 
 
-allowDrop : Html.Attribute msg
-allowDrop =
-    HA.attribute "ondragover" "event.preventDefault()"
+preventDefault : String -> Html.Attribute msg
+preventDefault eventAttributeName =
+    HA.attribute eventAttributeName "event.preventDefault()"
 
 
 onDragStart : msg -> Html.Attribute msg
