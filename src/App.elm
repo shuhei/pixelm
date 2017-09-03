@@ -387,7 +387,10 @@ update msg model =
             )
 
         MouseUpOnContainer ->
-            ( { model | isMouseDown = False, previousMouseDown = Nothing }
+            ( { model
+                | isMouseDown = False
+                , previousMouseDown = Nothing
+              }
             , Cmd.none
             )
 
@@ -395,6 +398,8 @@ update msg model =
             ( { model
                 | history = History.push model.frames model.history
                 , frames = SelectionList.swapCurrent frame model.frames
+                , isMouseDown = False
+                , previousMouseDown = Nothing
               }
             , Cmd.none
             )
