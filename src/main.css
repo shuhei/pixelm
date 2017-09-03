@@ -18,7 +18,6 @@ body {
 }
 
 .pixel-grid {
-  cursor: pointer;
   background-color: #eee;
   pointer-events: none;
 }

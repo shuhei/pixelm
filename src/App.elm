@@ -471,7 +471,7 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.frames.current.grid
+        [ viewGrid model.mode model.frames.current.grid
         , viewMenus model.mode model.images
         , viewColorSelector model.foregroundColor model.colors <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
@@ -534,11 +534,19 @@ viewModal config isSingleFrame =
             ]
 
 
-viewGrid : Grid -> Html Msg
-viewGrid grid =
+viewGrid : Mode -> Grid -> Html Msg
+viewGrid mode grid =
     Html.div
         [ HA.class "pixel-grid-container"
         , sizeStyle (resolution * pixelSize)
+        , HA.style
+            [ ( "cursor"
+              , if mode == Move then
+                    "move"
+                else
+                    "pointer"
+              )
+            ]
         , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
         , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
