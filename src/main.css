@@ -46,9 +46,9 @@ body {
   border: 3px solid transparent;
 }
 
+.mode:hover,
 .mode--selected {
   border: 3px solid #ccc;
-  color: #333;
 }
 
 .mode img {
