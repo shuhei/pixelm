@@ -721,6 +721,7 @@ viewFrame frameType frame =
                     , HA.draggable "true"
                     , Events.preventDefault "ondragenter"
                     , Events.preventDefault "ondragover"
+                    , Events.preventDefault "ontouchmove"
                     , Events.onDragStart <| SelectFrame frame
                     , Events.onDrop <| DropOnFrame frame
                     , Events.setDummyDragData
