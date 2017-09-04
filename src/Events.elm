@@ -29,7 +29,7 @@ decodeTouchEvent tagger =
             Json.field "target" decodeOffset
 
         decodeFirstTouch =
-            Json.field "touches" <| Json.field "0" decodeClientPos
+            Json.at [ "touches", "0" ] decodeClientPos
     in
         Json.map tagger <|
             Json.map2 minusPos decodeFirstTouch decodeTarget
@@ -128,32 +128,27 @@ prepareScript =
 onSingleOrDoubleClick : msg -> msg -> Html.Attribute msg
 onSingleOrDoubleClick singleMessage doubleMessage =
     let
-        decodeDoubleOrNot =
-            Json.oneOf
-                [ decodeClicked
-                , Json.succeed False
-                ]
-
-        getMessage isDoubleClick =
+        chooseMessage isDoubleClick =
             if isDoubleClick then
                 doubleMessage
             else
                 singleMessage
     in
         HE.onWithOptions "click" prevent <|
-            Json.map getMessage decodeDoubleOrNot
+            Json.map chooseMessage decodeClicked
 
 
 decodeClicked : Json.Decoder Bool
 decodeClicked =
     let
-        decodeClicked =
-            Json.field "dataset" <| Json.field "clicked" Json.string
-
-        isTrue x =
-            x == "true"
+        decodeData =
+            Json.map ((==) "true") <|
+                Json.at [ "currentTarget", "dataset", "clicked" ] Json.string
     in
-        Json.map isTrue <| Json.field "currentTarget" decodeClicked
+        Json.oneOf
+            [ decodeData
+            , Json.succeed False
+            ]
 
 
 {-| Set dummy data to `event.dataTransfer` on dragstart event for cross-browser
