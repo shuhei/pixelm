@@ -83,6 +83,7 @@ type ModalConfig
     = NoModal
     | FrameModal Frame
     | DownloadModal
+    | ColorModal
 
 
 type alias Model =
@@ -90,7 +91,6 @@ type alias Model =
     , isMouseDown : Bool
     , previousMouseDown : Maybe ( Int, Int )
     , foregroundColor : Color
-    , colors : List Color
     , history : History Frames
     , frames : Frames
     , frameSequence : Int
@@ -155,7 +155,6 @@ init flags =
             , isMouseDown = False
             , previousMouseDown = Nothing
             , foregroundColor = Color.black
-            , colors = colors
             , history = History.initialize 50
             , frames = SelectionList.init <| Frame initialFrameSequence emptyGrid
             , frameSequence = initialFrameSequence + 1
@@ -192,6 +191,7 @@ type Msg
     | DuplicateFrame Frame
     | ShowFrameModal Frame
     | ShowDownloadModal
+    | ShowColorModal
     | CloseModal
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
@@ -219,6 +219,7 @@ update msg model =
                         Bucket
                     else
                         Paint
+                , modalConfig = NoModal
               }
             , Cmd.none
             )
@@ -333,6 +334,11 @@ update msg model =
 
         ShowDownloadModal ->
             ( { model | modalConfig = DownloadModal }
+            , Cmd.none
+            )
+
+        ShowColorModal ->
+            ( { model | modalConfig = ColorModal }
             , Cmd.none
             )
 
@@ -473,7 +479,7 @@ view model =
         ]
         [ viewGrid model.mode model.frames.current.grid
         , viewMenus model.mode model.images
-        , viewColorSelector model.foregroundColor model.colors <|
+        , viewColorSelector model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
         , viewFrames model.images model.frameIndex model.frames
         , viewModal model.modalConfig <| SelectionList.isSingle model.frames
@@ -520,6 +526,9 @@ viewModal config isSingleFrame =
                         [ duplicateButton frame, closeButton ]
                     else
                         [ duplicateButton frame, deleteButton frame, closeButton ]
+
+                ColorModal ->
+                    List.map (viewColor [] SelectColor) colors
     in
         Html.div
             [ HA.classList
@@ -650,30 +659,26 @@ viewMenus selectedMode images =
             ]
 
 
-viewColorSelector : Color -> List Color -> List Color -> Html Msg
-viewColorSelector selected colors usedColors =
+viewColorSelector : Color -> List Color -> Html Msg
+viewColorSelector selected usedColors =
     Html.div
         [ HA.class "color-selector" ]
         [ Html.div
             [ HA.class "color-selector-row" ]
           <|
-            viewColor [ HA.class "color-selector__color--foreground" ] selected
-                :: List.map (viewColor []) usedColors
-        , Html.div
-            [ HA.class "color-selector-row" ]
-          <|
-            List.map (viewColor []) colors
+            viewColor [ HA.class "color-selector__color--foreground" ] (\_ -> ShowColorModal) selected
+                :: List.map (viewColor [] SelectColor) usedColors
         ]
 
 
-viewColor : List (Html.Attribute Msg) -> Color -> Html Msg
-viewColor attrs color =
+viewColor : List (Html.Attribute msg) -> (Color -> msg) -> Color -> Html msg
+viewColor attrs tagger color =
     let
         attributes =
             List.append
                 [ HA.class "color-selector__color"
                 , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
-                , HE.onClick <| SelectColor color
+                , HE.onClick <| tagger color
                 ]
                 attrs
     in
