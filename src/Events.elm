@@ -29,7 +29,7 @@ decodeTouchEvent tagger =
             Json.field "target" decodeOffset
 
         decodeFirstTouch =
-            Json.field "touches" <| Json.field "0" decodeClientPos
+            Json.at [ "touches", "0" ] decodeClientPos
     in
         Json.map tagger <|
             Json.map2 minusPos decodeFirstTouch decodeTarget
@@ -95,65 +95,67 @@ onDrop msg =
     HE.onWithOptions "drop" prevent <| Json.succeed msg
 
 
-{-| HACK: Double tap support on iOS
-
-iOS does not support `dblclick` event. To detect double tap on iOS:
-
-  - `prepareDoubleClick` sets a flag to the clicked element's `dataset` and
-    deletes it in a short amount of time.
-  - `onSingleOrDoubleClick` uses a JSON decoder to check if the flag exists
-    and returns a message for double click if the flag exists. Otherwise it
-    just returns a message for single click.
-
--}
 prepareDoubleClick : Html.Attribute msg
 prepareDoubleClick =
     HA.attribute "onclick" prepareScript
 
 
+{-| HACK: Emulate `dblclick` on iOS
+
+iOS does not support `dblclick` event. To detect double tap on iOS:
+
+1.  Set a flag to the clicked element's `dataset` and delete it in a short
+    amount of time.
+2.  Check if the flag exists and return a message for double click if the
+    flag exists. Otherwise it just returns a message
+    for single click.
+
+-}
 prepareScript : String
 prepareScript =
-    String.concat
-        [ "var el = event.currentTarget;"
-        , "setTimeout(function () {"
-        , "  if (el.dataset.timer) { clearTimeout(parseInt(el.dataset.timer, 10)); }"
-        , "  el.dataset.timer = setTimeout(function () {"
-        , "    delete el.dataset.clicked;"
-        , "  }, 500);"
-        , "  el.dataset.clicked = 'true';"
-        , "});"
-        ]
+    """
+    var el = event.currentTarget;
+
+    if (el.dataset.clicked === 'true') {
+        var dblclick = new MouseEvent('dblclick');
+        dblclick.currentTarget = event.currentTarget;
+        dblclick.target = event.target;
+        el.dispatchEvent(dblclick);
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    if (el.dataset.timer) {
+        clearTimeout(parseInt(el.dataset.timer, 10));
+    }
+    el.dataset.timer = setTimeout(function () {
+        delete el.dataset.clicked;
+    }, 500);
+    el.dataset.clicked = 'true';
+    """
 
 
 onSingleOrDoubleClick : msg -> msg -> Html.Attribute msg
 onSingleOrDoubleClick singleMessage doubleMessage =
     let
-        decodeDoubleOrNot =
-            Json.oneOf
-                [ decodeClicked
-                , Json.succeed False
-                ]
-
-        getMessage isDoubleClick =
+        chooseMessage isDoubleClick =
             if isDoubleClick then
                 doubleMessage
             else
                 singleMessage
     in
         HE.onWithOptions "click" prevent <|
-            Json.map getMessage decodeDoubleOrNot
+            Json.map chooseMessage decodeClicked
 
 
 decodeClicked : Json.Decoder Bool
 decodeClicked =
     let
-        decodeClicked =
-            Json.field "dataset" <| Json.field "clicked" Json.string
-
-        isTrue x =
-            x == "true"
+        decodeData =
+            Json.map ((==) "true") <|
+                Json.at [ "currentTarget", "dataset", "clicked" ] Json.string
     in
-        Json.map isTrue <| Json.field "currentTarget" decodeClicked
+        Json.oneOf [ decodeData, Json.succeed False ]
 
 
 {-| Set dummy data to `event.dataTransfer` on dragstart event for cross-browser

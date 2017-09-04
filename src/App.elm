@@ -729,7 +729,8 @@ viewFrame frameType frame =
                 , if frameType == FramePreview then
                     []
                   else
-                    [ Events.onSingleOrDoubleClick (SelectFrame frame) (ShowFrameModal frame)
+                    [ HE.onClick (SelectFrame frame)
+                    , HE.onDoubleClick (ShowFrameModal frame)
                     , Events.prepareDoubleClick
                     , HA.draggable "true"
                     , Events.preventDefault "ondragenter"
