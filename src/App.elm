@@ -654,10 +654,14 @@ viewColorSelector : Color -> List Color -> List Color -> Html Msg
 viewColorSelector selected colors usedColors =
     Html.div
         [ HA.class "color-selector" ]
-        [ Html.div [] <|
+        [ Html.div
+            [ HA.class "color-selector-row" ]
+          <|
             viewColor [ HA.class "color-selector__color--foreground" ] selected
                 :: List.map (viewColor []) usedColors
-        , Html.div [] <|
+        , Html.div
+            [ HA.class "color-selector-row" ]
+          <|
             List.map (viewColor []) colors
         ]
 

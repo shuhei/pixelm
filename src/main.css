@@ -13,13 +13,21 @@ body {
 }
 
 .pixel-grid-container {
-  margin: 20px auto;
+  margin: 20px auto 15px;
   -webkit-tap-highlight-color: transparent;
 }
 
 .pixel-grid {
   background-color: #eee;
   pointer-events: none;
+}
+
+.color-selector {
+  line-height: 0;
+}
+
+.color-selector-row {
+  margin-top: 10px;
 }
 
 .color-selector__color {
@@ -64,7 +72,7 @@ body {
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 15px;
+  padding: 15px 0;
   margin: 0 10px;
   -webkit-overflow-scrolling: touch;
   -ms-overflow-style: -ms-autohiding-scrollbar;
