@@ -724,11 +724,17 @@ viewMenus selectedMode images =
 
 viewCurrentColor : Color -> List Color -> Html Msg
 viewCurrentColor selected usedColors =
-    Html.div
-        [ HA.class "color-selector" ]
-    <|
-        viewColor [ HA.class "color-selector__color--foreground" ] (\_ -> ShowColorModal) True selected
-            :: List.map (viewColor [] SelectColor False) usedColors
+    let
+        foreground =
+            viewColor
+                [ HA.class "color-selector__color--foreground" ]
+                (\_ -> ShowColorModal)
+                (selected == Color.white)
+                selected
+    in
+        Html.div
+            [ HA.class "color-selector" ]
+            (foreground :: List.map (viewColor [] SelectColor False) usedColors)
 
 
 viewColor : List (Html.Attribute msg) -> (Color -> msg) -> Bool -> Color -> Html msg
