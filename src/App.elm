@@ -490,12 +490,12 @@ view model =
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
         , viewFrames model.images model.frameIndex model.frames
-        , viewModal model.modalConfig <| SelectionList.isSingle model.frames
+        , viewModal model.modalConfig (SelectionList.isSingle model.frames) model.foregroundColor
         ]
 
 
-viewModal : ModalConfig -> Bool -> Html Msg
-viewModal config isSingleFrame =
+viewModal : ModalConfig -> Bool -> Color -> Html Msg
+viewModal config isSingleFrame foregroundColor =
     let
         viewButton style text msg =
             Html.button
@@ -536,7 +536,7 @@ viewModal config isSingleFrame =
                         [ duplicateButton frame, deleteButton frame, closeButton ]
 
                 ColorModal hue ->
-                    viewColorModal hue
+                    viewColorModal hue foregroundColor
     in
         Html.div
             [ HA.classList
@@ -553,8 +553,8 @@ viewModal config isSingleFrame =
             ]
 
 
-viewColorModal : Float -> List (Html Msg)
-viewColorModal selectedHue =
+viewColorModal : Float -> Color -> List (Html Msg)
+viewColorModal selectedHue selectedColor =
     let
         zeroToOne count =
             List.range 0 (count - 1)
@@ -579,19 +579,22 @@ viewColorModal selectedHue =
                 |> List.map
                     (\colors ->
                         Html.div [ HA.class "color-picker__row" ] <|
-                            List.map (viewColor [] SelectColor) colors
+                            List.map (\c -> viewColor [] SelectColor (c == selectedColor && Color.black /= c) c) colors
                     )
 
         selectHue color =
             SelectHue <| ColorUtil.hue color
 
+        closeHue hue =
+            hue - 0.001 <= selectedHue && selectedHue <= hue + 0.001
+
         huePickers =
             hues 12
-                |> List.map (viewColor [] selectHue)
+                |> List.map (\h -> viewColor [] selectHue (closeHue <| ColorUtil.hue h) h)
     in
         [ Html.div
             [ HA.class "color-selector__row" ]
-            (List.map (viewColor [] SelectColor) colors)
+            (List.map (\c -> viewColor [] SelectColor (c == selectedColor) c) colors)
         , Html.div
             [ HA.class "color-picker" ]
             [ Html.div
@@ -725,17 +728,26 @@ viewCurrentColor selected usedColors =
     Html.div
         [ HA.class "color-selector" ]
     <|
-        viewColor [ HA.class "color-selector__color--foreground" ] (\_ -> ShowColorModal) selected
-            :: List.map (viewColor [] SelectColor) usedColors
+        viewColor [ HA.class "color-selector__color--foreground" ] (\_ -> ShowColorModal) True selected
+            :: List.map (viewColor [] SelectColor False) usedColors
 
 
-viewColor : List (Html.Attribute msg) -> (Color -> msg) -> Color -> Html msg
-viewColor attrs tagger color =
+viewColor : List (Html.Attribute msg) -> (Color -> msg) -> Bool -> Color -> Html msg
+viewColor attrs tagger selected color =
     let
+        borderColor =
+            if selected then
+                Color.lightGray
+            else
+                color
+
         attributes =
             List.append
                 [ HA.class "color-selector__color"
-                , HA.style [ ( "background-color", ColorUtil.toColorString color ) ]
+                , HA.style
+                    [ ( "background-color", ColorUtil.toColorString color )
+                    , ( "border-color", ColorUtil.toColorString borderColor )
+                    ]
                 , HE.onClick <| tagger color
                 ]
                 attrs
