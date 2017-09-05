@@ -21,24 +21,9 @@ import History exposing (History)
 ---- CONSTANTS ----
 
 
-resolution : Int
-resolution =
-    16
-
-
-pixelSize : Int
-pixelSize =
-    20
-
-
-framePixelSize : Int
+framePixelSize : Float
 framePixelSize =
     4
-
-
-canvasSize : Int
-canvasSize =
-    pixelSize * resolution
 
 
 
@@ -98,6 +83,8 @@ type alias Model =
     , frameIndex : Int
     , images : ImagePaths
     , modalConfig : ModalConfig
+    , resolution : Int
+    , pixelSize : Float
     }
 
 
@@ -106,8 +93,8 @@ makeGrid cols rows color =
     Array2.initialize cols rows (\x y -> color)
 
 
-emptyGrid : Grid
-emptyGrid =
+emptyGrid : Int -> Grid
+emptyGrid resolution =
     makeGrid resolution resolution ColorUtil.transparent
 
 
@@ -156,12 +143,16 @@ init flags =
             , previousMouseDown = Nothing
             , foregroundColor = Color.black
             , history = History.initialize 50
-            , frames = SelectionList.init <| Frame initialFrameSequence emptyGrid
+            , frames =
+                SelectionList.init <|
+                    Frame initialFrameSequence (emptyGrid 16)
             , frameSequence = initialFrameSequence + 1
             , fps = 10
             , frameIndex = 0
             , images = flags
             , modalConfig = NoModal
+            , resolution = 16
+            , pixelSize = 20
             }
     in
         ( model, Cmd.none )
@@ -229,7 +220,7 @@ update msg model =
                 | history = History.push model.frames model.history
                 , frames =
                     SelectionList.updateCurrent
-                        (\frame -> { frame | grid = emptyGrid })
+                        (\frame -> { frame | grid = emptyGrid model.resolution })
                         model.frames
               }
             , Cmd.none
@@ -240,7 +231,7 @@ update msg model =
                 | history = History.push model.frames model.history
                 , frames =
                     SelectionList.append
-                        { id = model.frameSequence, grid = emptyGrid }
+                        { id = model.frameSequence, grid = emptyGrid model.resolution }
                         model.frames
                 , frameSequence = model.frameSequence + 1
               }
@@ -357,7 +348,7 @@ update msg model =
         MouseDownOnCanvas pos ->
             let
                 pixelPos =
-                    getPixelPos pos
+                    getPixelPos model.pixelSize pos
             in
                 ( { model
                     | history = History.push model.frames model.history
@@ -371,7 +362,7 @@ update msg model =
         MouseMoveOnCanvas pos ->
             let
                 pixelPos =
-                    getPixelPos pos
+                    getPixelPos model.pixelSize pos
             in
                 if model.isMouseDown then
                     ( { model
@@ -425,9 +416,9 @@ update msg model =
             )
 
 
-getPixelPos : ( Int, Int ) -> ( Int, Int )
-getPixelPos ( x, y ) =
-    ( x // pixelSize, y // pixelSize )
+getPixelPos : Float -> ( Int, Int ) -> ( Int, Int )
+getPixelPos pixelSize ( x, y ) =
+    ( floor (toFloat x / pixelSize), floor (toFloat y / pixelSize) )
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -484,11 +475,11 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.mode model.frames.current.grid
+        [ viewGrid model.resolution model.pixelSize model.mode model.frames.current.grid
         , viewMenus model.mode model.images
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
-        , viewFrames model.images model.frameIndex model.frames
+        , viewFrames model.resolution model.images model.frameIndex model.frames
         , viewModal model.modalConfig (SelectionList.isSingle model.frames) model.foregroundColor
         ]
 
@@ -606,11 +597,11 @@ viewColorModal selectedHue selectedColor =
         ]
 
 
-viewGrid : Mode -> Grid -> Html Msg
-viewGrid mode grid =
+viewGrid : Int -> Float -> Mode -> Grid -> Html Msg
+viewGrid resolution pixelSize mode grid =
     Html.div
         [ HA.class "pixel-grid-container"
-        , sizeStyle (resolution * pixelSize)
+        , sizeStyle (toFloat resolution * pixelSize)
         , HA.style
             [ ( "cursor"
               , if mode == Move then
@@ -628,30 +619,30 @@ viewGrid mode grid =
         ]
         [ Svg.svg
             [ SA.class "pixel-grid"
-            , SA.width <| toString canvasSize
-            , SA.height <| toString canvasSize
+            , SA.width <| toString (toFloat resolution * pixelSize)
+            , SA.height <| toString (toFloat resolution * pixelSize)
             ]
             [ viewRects pixelSize grid
-            , viewBorders
+            , viewBorders resolution pixelSize
             ]
         ]
 
 
-viewBorders : Svg msg
-viewBorders =
+viewBorders : Int -> Float -> Svg msg
+viewBorders resolution pixelSize =
     let
         ns =
             List.range 0 (resolution - 1)
 
         pos n =
-            toFloat (pixelSize * n) + 0.5
+            pixelSize * toFloat n + 0.5
 
         vertical n =
             Svg.line
                 [ SA.x1 <| toString <| pos n
                 , SA.y1 <| toString 0
                 , SA.x2 <| toString <| pos n
-                , SA.y2 <| toString canvasSize
+                , SA.y2 <| toString (toFloat resolution * pixelSize)
                 ]
                 []
 
@@ -659,7 +650,7 @@ viewBorders =
             Svg.line
                 [ SA.x1 <| toString 0
                 , SA.y1 <| toString <| pos n
-                , SA.x2 <| toString canvasSize
+                , SA.x2 <| toString (toFloat resolution * pixelSize)
                 , SA.y2 <| toString <| pos n
                 ]
                 []
@@ -672,15 +663,15 @@ viewBorders =
             (List.map vertical ns ++ List.map horizontal ns)
 
 
-viewRects : Int -> Grid -> Svg Msg
+viewRects : Float -> Grid -> Svg Msg
 viewRects size grid =
     let
         makeRect col row pixel =
             Svg.rect
                 [ SA.width <| toString size
                 , SA.height <| toString size
-                , SA.x <| toString <| col * size
-                , SA.y <| toString <| row * size
+                , SA.x <| toString <| toFloat col * size
+                , SA.y <| toString <| toFloat row * size
                 , SA.fill <| ColorUtil.toColorString pixel
                 ]
                 []
@@ -777,8 +768,8 @@ type FrameType
     | FramePreview
 
 
-viewFrames : ImagePaths -> Int -> Frames -> Html Msg
-viewFrames images index frames =
+viewFrames : Int -> ImagePaths -> Int -> Frames -> Html Msg
+viewFrames resolution images index frames =
     Html.div
         [ HA.class "frame-list" ]
     <|
@@ -786,19 +777,19 @@ viewFrames images index frames =
             [ if SelectionList.isSingle frames then
                 []
               else
-                [ viewFrame FramePreview <| SelectionList.get index frames ]
-            , List.map (viewFrame FrameNormal) <| Array.toList frames.previous
-            , [ viewFrame FrameSelected frames.current ]
-            , List.map (viewFrame FrameNormal) <| Array.toList frames.next
-            , [ viewAddFrame images ]
+                [ viewFrame resolution FramePreview <| SelectionList.get index frames ]
+            , List.map (viewFrame resolution FrameNormal) <| Array.toList frames.previous
+            , [ viewFrame resolution FrameSelected frames.current ]
+            , List.map (viewFrame resolution FrameNormal) <| Array.toList frames.next
+            , [ viewAddFrame resolution images ]
             ]
 
 
-viewFrame : FrameType -> Frame -> Html Msg
-viewFrame frameType frame =
+viewFrame : Int -> FrameType -> Frame -> Html Msg
+viewFrame resolution frameType frame =
     let
         canvasSize =
-            resolution * framePixelSize
+            toFloat resolution * framePixelSize
 
         attrs =
             List.concat
@@ -836,17 +827,17 @@ viewFrame frameType frame =
             ]
 
 
-viewAddFrame : ImagePaths -> Html Msg
-viewAddFrame images =
+viewAddFrame : Int -> ImagePaths -> Html Msg
+viewAddFrame resolution images =
     Html.div
         [ HA.class "frame frame--plus"
-        , sizeStyle (resolution * framePixelSize)
+        , sizeStyle <| (toFloat resolution * framePixelSize)
         , HE.onClick AddFrame
         ]
         [ svgIcon images.plus ]
 
 
-sizeStyle : Int -> Html.Attribute msg
+sizeStyle : Float -> Html.Attribute msg
 sizeStyle size =
     HA.style
         [ ( "width", toString size ++ "px" )
