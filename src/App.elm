@@ -220,7 +220,6 @@ update msg model =
                         Bucket
                     else
                         Paint
-                , modalConfig = NoModal
               }
             , Cmd.none
             )
