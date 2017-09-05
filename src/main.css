@@ -22,16 +22,35 @@ body {
   pointer-events: none;
 }
 
-.color-selector {
-  line-height: 0;
+.color-picker {
+  display: flex;
 }
 
-.color-selector-row {
-  margin-top: 10px;
+.color-picker__hues {
+  width: 20px;
+}
+
+.color-picker__row {
+  display: flex;
+}
+
+.color-picker__colors {
+  width: 240px;
+  margin-right: 20px;
+}
+
+.color-selector {
+  display: flex;
+  justify-content: center;
+}
+
+.color-selector__row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .color-selector__color {
-  display: inline-block;
   width: 20px;
   height: 20px;
   cursor: pointer;
@@ -44,6 +63,7 @@ body {
 .menu {
   font-size: 32px;
   line-height: 32px;
+  margin-bottom: 12px;
 }
 
 .mode {

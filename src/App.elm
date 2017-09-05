@@ -83,7 +83,7 @@ type ModalConfig
     = NoModal
     | FrameModal Frame
     | DownloadModal
-    | ColorModal
+    | ColorModal Float
 
 
 type alias Model =
@@ -192,6 +192,7 @@ type Msg
     | ShowFrameModal Frame
     | ShowDownloadModal
     | ShowColorModal
+    | SelectHue Float
     | CloseModal
     | MouseDownOnCanvas ( Int, Int )
     | MouseMoveOnCanvas ( Int, Int )
@@ -338,7 +339,14 @@ update msg model =
             )
 
         ShowColorModal ->
-            ( { model | modalConfig = ColorModal }
+            ( { model
+                | modalConfig = ColorModal <| ColorUtil.hue model.foregroundColor
+              }
+            , Cmd.none
+            )
+
+        SelectHue hue ->
+            ( { model | modalConfig = ColorModal hue }
             , Cmd.none
             )
 
@@ -479,7 +487,7 @@ view model =
         ]
         [ viewGrid model.mode model.frames.current.grid
         , viewMenus model.mode model.images
-        , viewColorSelector model.foregroundColor <|
+        , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
         , viewFrames model.images model.frameIndex model.frames
         , viewModal model.modalConfig <| SelectionList.isSingle model.frames
@@ -527,8 +535,8 @@ viewModal config isSingleFrame =
                     else
                         [ duplicateButton frame, deleteButton frame, closeButton ]
 
-                ColorModal ->
-                    List.map (viewColor [] SelectColor) colors
+                ColorModal hue ->
+                    viewColorModal hue
     in
         Html.div
             [ HA.classList
@@ -538,9 +546,62 @@ viewModal config isSingleFrame =
             , HE.onClick CloseModal
             ]
             [ Html.div
-                [ HA.class "modal-content" ]
+                [ HA.class "modal-content"
+                , Events.stopPropagation "onclick"
+                ]
                 content
             ]
+
+
+viewColorModal : Float -> List (Html Msg)
+viewColorModal selectedHue =
+    let
+        zeroToOne count =
+            List.range 0 (count - 1)
+                |> List.map (\i -> toFloat i / toFloat (count - 1))
+
+        hues count =
+            zeroToOne (count + 1)
+                |> List.take count
+                |> List.map (\hue -> ColorUtil.hsv (degrees 360 * hue) 1 1)
+
+        hsvs hue count =
+            zeroToOne count
+                |> List.reverse
+                |> List.map
+                    (\value ->
+                        zeroToOne count
+                            |> List.map (\saturation -> ColorUtil.hsv hue saturation value)
+                    )
+
+        svPickers =
+            hsvs selectedHue 12
+                |> List.map
+                    (\colors ->
+                        Html.div [ HA.class "color-picker__row" ] <|
+                            List.map (viewColor [] SelectColor) colors
+                    )
+
+        selectHue color =
+            SelectHue <| ColorUtil.hue color
+
+        huePickers =
+            hues 12
+                |> List.map (viewColor [] selectHue)
+    in
+        [ Html.div
+            [ HA.class "color-selector__row" ]
+            (List.map (viewColor [] SelectColor) colors)
+        , Html.div
+            [ HA.class "color-picker" ]
+            [ Html.div
+                [ HA.class "color-picker__colors" ]
+                svPickers
+            , Html.div
+                [ HA.class "color-picker__hues" ]
+                huePickers
+            ]
+        ]
 
 
 viewGrid : Mode -> Grid -> Html Msg
@@ -659,16 +720,13 @@ viewMenus selectedMode images =
             ]
 
 
-viewColorSelector : Color -> List Color -> Html Msg
-viewColorSelector selected usedColors =
+viewCurrentColor : Color -> List Color -> Html Msg
+viewCurrentColor selected usedColors =
     Html.div
         [ HA.class "color-selector" ]
-        [ Html.div
-            [ HA.class "color-selector-row" ]
-          <|
-            viewColor [ HA.class "color-selector__color--foreground" ] (\_ -> ShowColorModal) selected
-                :: List.map (viewColor [] SelectColor) usedColors
-        ]
+    <|
+        viewColor [ HA.class "color-selector__color--foreground" ] (\_ -> ShowColorModal) selected
+            :: List.map (viewColor [] SelectColor) usedColors
 
 
 viewColor : List (Html.Attribute msg) -> (Color -> msg) -> Color -> Html msg

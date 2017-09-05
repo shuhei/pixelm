@@ -6,6 +6,7 @@ module Events
         , onDragStart
         , onDrop
         , preventDefault
+        , stopPropagation
         , prepareDoubleClick
         , onSingleOrDoubleClick
         , setDummyDragData
@@ -83,6 +84,11 @@ onWithStopAndPrevent eventName decoder =
 preventDefault : String -> Html.Attribute msg
 preventDefault eventAttributeName =
     HA.attribute eventAttributeName "event.preventDefault()"
+
+
+stopPropagation : String -> Html.Attribute msg
+stopPropagation eventAttributeName =
+    HA.attribute eventAttributeName "event.stopPropagation()"
 
 
 onDragStart : msg -> Html.Attribute msg

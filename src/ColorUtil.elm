@@ -1,4 +1,11 @@
-module ColorUtil exposing (..)
+module ColorUtil
+    exposing
+        ( RGBA
+        , toColorString
+        , hsv
+        , hue
+        , transparent
+        )
 
 import Color exposing (Color)
 
@@ -26,6 +33,64 @@ toColorString color =
             ++ ","
             ++ toString alpha
             ++ ")"
+
+
+modFloat : Float -> Float -> Float
+modFloat x y =
+    let
+        z =
+            toFloat <| floor (x / y)
+    in
+        x - z * y
+
+
+{-| <http://www.rapidtables.com/convert/color/hsv-to-rgb.htm>
+-}
+hsv : Float -> Float -> Float -> Color
+hsv hue saturation value =
+    let
+        h =
+            modFloat (hue / pi * 180) 360
+
+        c =
+            value * saturation
+
+        x =
+            c * (1 - abs (modFloat (h / 60) 2 - 1))
+
+        m =
+            value - c
+
+        normalize m x =
+            floor ((m + x) * 255)
+
+        rgb r g b =
+            Color.rgb (normalize m r) (normalize m g) (normalize m b)
+    in
+        if 0 <= h && h < 60 then
+            rgb c x 0
+        else if 60 <= h && h < 120 then
+            rgb x c 0
+        else if 120 <= h && h < 180 then
+            rgb 0 c x
+        else if 180 <= h && h < 240 then
+            rgb 0 x c
+        else if 240 <= h && h < 300 then
+            rgb x 0 c
+        else
+            rgb c 0 x
+
+
+hue : Color -> Float
+hue color =
+    let
+        h =
+            (Color.toHsl color).hue
+    in
+        if isNaN h then
+            0
+        else
+            h
 
 
 transparent : Color
