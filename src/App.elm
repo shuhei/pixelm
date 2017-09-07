@@ -85,6 +85,8 @@ type alias Model =
     , modalConfig : ModalConfig
     , resolution : Int
     , pixelSize : Float
+    , zoom : Float
+    , offset : ( Float, Float )
     }
 
 
@@ -153,6 +155,8 @@ init flags =
             , modalConfig = NoModal
             , resolution = 16
             , pixelSize = 20
+            , zoom = 1
+            , offset = ( 0, 0 )
             }
     in
         ( model, Cmd.none )
@@ -185,9 +189,10 @@ type Msg
     | ShowColorModal
     | SelectHue Float
     | CloseModal
-    | MouseDownOnCanvas ( Int, Int )
-    | MouseMoveOnCanvas ( Int, Int )
+    | MouseDownOnCanvas ( Float, Float )
+    | MouseMoveOnCanvas ( Float, Float )
     | MouseUpOnCanvas
+    | MouseWheelOnCanvas ( Float, Float ) ( Float, Float )
     | MouseDownOnContainer
     | MouseUpOnContainer
     | DropOnFrame Frame
@@ -348,7 +353,7 @@ update msg model =
         MouseDownOnCanvas pos ->
             let
                 pixelPos =
-                    getPixelPos model.pixelSize pos
+                    getPixelPos model.pixelSize model.zoom model.offset pos
             in
                 ( { model
                     | history = History.push model.frames model.history
@@ -362,7 +367,7 @@ update msg model =
         MouseMoveOnCanvas pos ->
             let
                 pixelPos =
-                    getPixelPos model.pixelSize pos
+                    getPixelPos model.pixelSize model.zoom model.offset pos
             in
                 if model.isMouseDown then
                     ( { model
@@ -381,6 +386,34 @@ update msg model =
               }
             , Cmd.none
             )
+
+        MouseWheelOnCanvas ( _, deltaY ) pos ->
+            let
+                zoomBy =
+                    if deltaY > 0 then
+                        1.1
+                    else
+                        1 / 1.1
+
+                zoom =
+                    model.zoom * zoomBy
+
+                offset =
+                    if deltaY > 0 then
+                        interpolate (originalPos model.zoom model.offset pos) model.offset (1 / zoomBy)
+                    else
+                        interpolate model.offset ( 0, 0 ) ((model.zoom - zoom) / (zoom * (model.zoom - 1)))
+            in
+                if zoom <= 1 then
+                    ( { model | zoom = 1, offset = ( 0, 0 ) }
+                    , Cmd.none
+                    )
+                else if zoom > 1 && zoom < 10 then
+                    ( { model | zoom = zoom, offset = offset }
+                    , Cmd.none
+                    )
+                else
+                    ( model, Cmd.none )
 
         MouseDownOnContainer ->
             ( { model
@@ -416,9 +449,29 @@ update msg model =
             )
 
 
-getPixelPos : Float -> ( Int, Int ) -> ( Int, Int )
-getPixelPos pixelSize ( x, y ) =
-    ( floor (toFloat x / pixelSize), floor (toFloat y / pixelSize) )
+interpolate : ( Float, Float ) -> ( Float, Float ) -> Float -> ( Float, Float )
+interpolate ( x1, y1 ) ( x2, y2 ) ratio =
+    ( x1 + ratio * (x2 - x1)
+    , y1 + ratio * (y2 - y1)
+    )
+
+
+{-| Convert screen position into original position
+-}
+originalPos : Float -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
+originalPos zoom ( offsetX, offsetY ) ( x, y ) =
+    ( offsetX + x / zoom
+    , offsetY + y / zoom
+    )
+
+
+getPixelPos : Float -> Float -> ( Float, Float ) -> ( Float, Float ) -> ( Int, Int )
+getPixelPos pixelSize zoom offset pos =
+    let
+        ( ox, oy ) =
+            originalPos zoom offset pos
+    in
+        ( floor (ox / pixelSize), floor (oy / pixelSize) )
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -475,7 +528,7 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.resolution model.pixelSize model.mode model.frames.current.grid
+        [ viewGrid model.resolution model.pixelSize model.zoom model.offset model.mode model.frames.current.grid
         , viewMenus model.mode model.images
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
@@ -597,35 +650,59 @@ viewColorModal selectedHue selectedColor =
         ]
 
 
-viewGrid : Int -> Float -> Mode -> Grid -> Html Msg
-viewGrid resolution pixelSize mode grid =
-    Html.div
-        [ HA.class "pixel-grid-container"
-        , sizeStyle (toFloat resolution * pixelSize)
-        , HA.style
-            [ ( "cursor"
-              , if mode == Move then
-                    "move"
-                else
-                    "pointer"
-              )
+viewBox : Float -> Float -> Float -> Float -> String
+viewBox minX minY width height =
+    [ minX, minY, width, height ]
+        |> List.map toString
+        |> String.join " "
+
+
+viewGrid : Int -> Float -> Float -> ( Float, Float ) -> Mode -> Grid -> Html Msg
+viewGrid resolution pixelSize zoom ( offsetX, offsetY ) mode grid =
+    let
+        viewSize =
+            (toFloat resolution * pixelSize) / zoom
+    in
+        Html.div
+            [ HA.class "pixel-grid-container"
+            , sizeStyle (toFloat resolution * pixelSize)
+            , HA.style
+                [ ( "cursor"
+                  , if mode == Move then
+                        "move"
+                    else
+                        "pointer"
+                  )
+                ]
+            , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
+            , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
+            , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
+            , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
+            , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
+            , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
+            , Events.onWithStopAndPrevent "mousewheel" <| Events.decodeWheelEvent MouseWheelOnCanvas
             ]
-        , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
-        , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
-        , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
-        , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
-        , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
-        , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
+            [ Svg.svg
+                [ SA.class "pixel-grid"
+                , SA.width <| toString (toFloat resolution * pixelSize)
+                , SA.height <| toString (toFloat resolution * pixelSize)
+                , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
+                ]
+                [ viewRects pixelSize grid
+                , viewBorders resolution pixelSize
+                ]
+            ]
+
+
+drawLine : Float -> Float -> Float -> Float -> Svg msg
+drawLine x1 y1 x2 y2 =
+    Svg.line
+        [ SA.x1 <| toString x1
+        , SA.y1 <| toString y1
+        , SA.x2 <| toString x2
+        , SA.y2 <| toString y2
         ]
-        [ Svg.svg
-            [ SA.class "pixel-grid"
-            , SA.width <| toString (toFloat resolution * pixelSize)
-            , SA.height <| toString (toFloat resolution * pixelSize)
-            ]
-            [ viewRects pixelSize grid
-            , viewBorders resolution pixelSize
-            ]
-        ]
+        []
 
 
 viewBorders : Int -> Float -> Svg msg
@@ -638,22 +715,10 @@ viewBorders resolution pixelSize =
             pixelSize * toFloat n + 0.5
 
         vertical n =
-            Svg.line
-                [ SA.x1 <| toString <| pos n
-                , SA.y1 <| toString 0
-                , SA.x2 <| toString <| pos n
-                , SA.y2 <| toString (toFloat resolution * pixelSize)
-                ]
-                []
+            drawLine (pos n) 0 (pos n) (toFloat resolution * pixelSize)
 
         horizontal n =
-            Svg.line
-                [ SA.x1 <| toString 0
-                , SA.y1 <| toString <| pos n
-                , SA.x2 <| toString (toFloat resolution * pixelSize)
-                , SA.y2 <| toString <| pos n
-                ]
-                []
+            drawLine 0 (pos n) (toFloat resolution * pixelSize) (pos n)
     in
         Svg.g
             [ SA.class "grid-borders"

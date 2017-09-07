@@ -2,6 +2,7 @@ module Events
     exposing
         ( decodeMouseEvent
         , decodeTouchEvent
+        , decodeWheelEvent
         , onWithStopAndPrevent
         , onDragStart
         , onDrop
@@ -18,12 +19,12 @@ import Html.Events as HE
 import Html.Attributes as HA
 
 
-minusPos : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
+minusPos : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
 minusPos ( x0, y0 ) ( x1, y1 ) =
     ( x0 - x1, y0 - y1 )
 
 
-decodeTouchEvent : (( Int, Int ) -> msg) -> Json.Decoder msg
+decodeTouchEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
 decodeTouchEvent tagger =
     let
         decodeTarget =
@@ -36,30 +37,32 @@ decodeTouchEvent tagger =
             Json.map2 minusPos decodeFirstTouch decodeTarget
 
 
-decodeOffset : Json.Decoder ( Int, Int )
+decodeOffset : Json.Decoder ( Float, Float )
 decodeOffset =
     Json.map2 (,)
-        (Json.field "offsetLeft" Json.int)
-        (Json.field "offsetTop" Json.int)
+        (Json.field "offsetLeft" Json.float)
+        (Json.field "offsetTop" Json.float)
 
 
-{-| Android's Touch.clientX/Y are float instead of int.
--}
-decodeClientPos : Json.Decoder ( Int, Int )
+decodeClientPos : Json.Decoder ( Float, Float )
 decodeClientPos =
     Json.map2 (,)
-        (Json.map floor <| Json.field "clientX" Json.float)
-        (Json.map floor <| Json.field "clientY" Json.float)
+        (Json.field "clientX" Json.float)
+        (Json.field "clientY" Json.float)
 
 
-decodeMouseEvent : (( Int, Int ) -> msg) -> Json.Decoder msg
-decodeMouseEvent tagger =
+decodeRelativePos : Json.Decoder ( Float, Float )
+decodeRelativePos =
     let
         decodeTarget =
             Json.field "currentTarget" decodeOffset
     in
-        Json.map tagger <|
-            Json.map2 minusPos decodeClientPos decodeTarget
+        Json.map2 minusPos decodeClientPos decodeTarget
+
+
+decodeMouseEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
+decodeMouseEvent tagger =
+    Json.map tagger decodeRelativePos
 
 
 stopAndPrevent : HE.Options
@@ -166,3 +169,15 @@ support.
 setDummyDragData : Html.Attribute msg
 setDummyDragData =
     HA.attribute "ondragstart" "event.dataTransfer.setData('text', 'dummy');"
+
+
+decodeDelta : Json.Decoder ( Float, Float )
+decodeDelta =
+    Json.map2 (,)
+        (Json.field "deltaX" Json.float)
+        (Json.field "deltaY" Json.float)
+
+
+decodeWheelEvent : (( Float, Float ) -> ( Float, Float ) -> msg) -> Json.Decoder msg
+decodeWheelEvent tagger =
+    Json.map2 tagger decodeDelta decodeRelativePos
