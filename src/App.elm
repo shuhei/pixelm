@@ -398,24 +398,18 @@ update msg model =
                 zoom =
                     model.zoom * zoomBy
 
-                original =
-                    originalPos model.zoom model.offset pos
-
                 offset =
-                    interpolate original model.offset (1 / zoomBy)
+                    if deltaY > 0 then
+                        interpolate (originalPos model.zoom model.offset pos) model.offset (1 / zoomBy)
+                    else
+                        interpolate model.offset ( 0, 0 ) ((model.zoom - zoom) / (zoom * (model.zoom - 1)))
             in
                 if zoom <= 1 then
-                    ( { model
-                        | zoom = 1
-                        , offset = ( 0, 0 )
-                      }
+                    ( { model | zoom = 1, offset = ( 0, 0 ) }
                     , Cmd.none
                     )
                 else if zoom > 1 && zoom < 10 then
-                    ( { model
-                        | zoom = zoom
-                        , offset = offset
-                      }
+                    ( { model | zoom = zoom, offset = offset }
                     , Cmd.none
                     )
                 else
