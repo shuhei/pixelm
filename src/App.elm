@@ -86,7 +86,7 @@ type alias Model =
     , resolution : Int
     , pixelSize : Float
     , zoom : Float
-    , center : ( Float, Float )
+    , offset : ( Float, Float )
     }
 
 
@@ -156,7 +156,7 @@ init flags =
             , resolution = 16
             , pixelSize = 20
             , zoom = 1
-            , center = ( 160, 160 )
+            , offset = ( 0, 0 )
             }
     in
         ( model, Cmd.none )
@@ -192,7 +192,7 @@ type Msg
     | MouseDownOnCanvas ( Float, Float )
     | MouseMoveOnCanvas ( Float, Float )
     | MouseUpOnCanvas
-    | MouseWheelOnCanvas Float
+    | MouseWheelOnCanvas ( Float, Float ) ( Float, Float )
     | MouseDownOnContainer
     | MouseUpOnContainer
     | DropOnFrame Frame
@@ -353,7 +353,7 @@ update msg model =
         MouseDownOnCanvas pos ->
             let
                 pixelPos =
-                    getPixelPos model.resolution model.pixelSize model.zoom model.center pos
+                    getPixelPos model.pixelSize model.zoom model.offset pos
             in
                 ( { model
                     | history = History.push model.frames model.history
@@ -367,7 +367,7 @@ update msg model =
         MouseMoveOnCanvas pos ->
             let
                 pixelPos =
-                    getPixelPos model.resolution model.pixelSize model.zoom model.center pos
+                    getPixelPos model.pixelSize model.zoom model.offset pos
             in
                 if model.isMouseDown then
                     ( { model
@@ -387,15 +387,39 @@ update msg model =
             , Cmd.none
             )
 
-        MouseWheelOnCanvas deltaY ->
+        MouseWheelOnCanvas ( _, deltaY ) pos ->
             let
-                zoom =
+                zoomBy =
                     if deltaY > 0 then
-                        model.zoom * 1.1
+                        1.1
                     else
-                        model.zoom / 1.1
+                        1 / 1.1
+
+                zoom =
+                    model.zoom * zoomBy
+
+                original =
+                    originalPos model.zoom model.offset pos
+
+                offset =
+                    interpolate original model.offset (1 / zoomBy)
             in
-                ( { model | zoom = min 10 <| max 1 <| zoom }, Cmd.none )
+                if zoom <= 1 then
+                    ( { model
+                        | zoom = 1
+                        , offset = ( 0, 0 )
+                      }
+                    , Cmd.none
+                    )
+                else if zoom > 1 && zoom < 10 then
+                    ( { model
+                        | zoom = zoom
+                        , offset = offset
+                      }
+                    , Cmd.none
+                    )
+                else
+                    ( model, Cmd.none )
 
         MouseDownOnContainer ->
             ( { model
@@ -431,17 +455,27 @@ update msg model =
             )
 
 
-getPixelPos : Int -> Float -> Float -> ( Float, Float ) -> ( Float, Float ) -> ( Int, Int )
-getPixelPos resolution pixelSize zoom ( centerX, centerY ) ( x, y ) =
+interpolate : ( Float, Float ) -> ( Float, Float ) -> Float -> ( Float, Float )
+interpolate ( x1, y1 ) ( x2, y2 ) ratio =
+    ( x1 + ratio * (x2 - x1)
+    , y1 + ratio * (y2 - y1)
+    )
+
+
+{-| Convert screen position into original position
+-}
+originalPos : Float -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
+originalPos zoom ( offsetX, offsetY ) ( x, y ) =
+    ( offsetX + x / zoom
+    , offsetY + y / zoom
+    )
+
+
+getPixelPos : Float -> Float -> ( Float, Float ) -> ( Float, Float ) -> ( Int, Int )
+getPixelPos pixelSize zoom offset pos =
     let
-        size =
-            toFloat resolution * pixelSize
-
-        ox =
-            centerX + (x - size / 2) / zoom
-
-        oy =
-            centerY + (y - size / 2) / zoom
+        ( ox, oy ) =
+            originalPos zoom offset pos
     in
         ( floor (ox / pixelSize), floor (oy / pixelSize) )
 
@@ -500,7 +534,7 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.resolution model.pixelSize model.zoom model.center model.mode model.frames.current.grid
+        [ viewGrid model.resolution model.pixelSize model.zoom model.offset model.mode model.frames.current.grid
         , viewMenus model.mode model.images
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
@@ -630,7 +664,7 @@ viewBox minX minY width height =
 
 
 viewGrid : Int -> Float -> Float -> ( Float, Float ) -> Mode -> Grid -> Html Msg
-viewGrid resolution pixelSize zoom ( centerX, centerY ) mode grid =
+viewGrid resolution pixelSize zoom ( offsetX, offsetY ) mode grid =
     let
         viewSize =
             (toFloat resolution * pixelSize) / zoom
@@ -652,13 +686,13 @@ viewGrid resolution pixelSize zoom ( centerX, centerY ) mode grid =
             , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
             , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
             , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
-            , Events.onWithStopAndPrevent "mousewheel" <| Events.decodeDeltaY MouseWheelOnCanvas
+            , Events.onWithStopAndPrevent "mousewheel" <| Events.decodeWheelEvent MouseWheelOnCanvas
             ]
             [ Svg.svg
                 [ SA.class "pixel-grid"
                 , SA.width <| toString (toFloat resolution * pixelSize)
                 , SA.height <| toString (toFloat resolution * pixelSize)
-                , SA.viewBox <| viewBox (centerX - viewSize / 2) (centerY - viewSize / 2) viewSize viewSize
+                , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
                 ]
                 [ viewRects pixelSize grid
                 , viewBorders resolution pixelSize

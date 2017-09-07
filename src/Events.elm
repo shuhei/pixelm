@@ -2,7 +2,7 @@ module Events
     exposing
         ( decodeMouseEvent
         , decodeTouchEvent
-        , decodeDeltaY
+        , decodeWheelEvent
         , onWithStopAndPrevent
         , onDragStart
         , onDrop
@@ -51,14 +51,18 @@ decodeClientPos =
         (Json.field "clientY" Json.float)
 
 
-decodeMouseEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
-decodeMouseEvent tagger =
+decodeRelativePos : Json.Decoder ( Float, Float )
+decodeRelativePos =
     let
         decodeTarget =
             Json.field "currentTarget" decodeOffset
     in
-        Json.map tagger <|
-            Json.map2 minusPos decodeClientPos decodeTarget
+        Json.map2 minusPos decodeClientPos decodeTarget
+
+
+decodeMouseEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
+decodeMouseEvent tagger =
+    Json.map tagger decodeRelativePos
 
 
 stopAndPrevent : HE.Options
@@ -167,7 +171,13 @@ setDummyDragData =
     HA.attribute "ondragstart" "event.dataTransfer.setData('text', 'dummy');"
 
 
-decodeDeltaY : (Float -> msg) -> Json.Decoder msg
-decodeDeltaY tagger =
-    Json.map tagger <|
-        Json.field "deltaY" Json.float
+decodeDelta : Json.Decoder ( Float, Float )
+decodeDelta =
+    Json.map2 (,)
+        (Json.field "deltaX" Json.float)
+        (Json.field "deltaY" Json.float)
+
+
+decodeWheelEvent : (( Float, Float ) -> ( Float, Float ) -> msg) -> Json.Decoder msg
+decodeWheelEvent tagger =
+    Json.map2 tagger decodeDelta decodeRelativePos
