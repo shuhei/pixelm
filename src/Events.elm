@@ -24,17 +24,35 @@ minusPos ( x0, y0 ) ( x1, y1 ) =
     ( x0 - x1, y0 - y1 )
 
 
-decodeTouchEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
+decodeListLike : Json.Decoder a -> Json.Decoder (List a)
+decodeListLike decoder =
+    let
+        decodeIndex i =
+            Json.field (toString i) decoder
+
+        list length =
+            List.range 0 (length - 1)
+                |> List.map decodeIndex
+                |> List.foldr (Json.map2 (::)) (Json.succeed [])
+    in
+        Json.field "length" Json.int
+            |> Json.andThen list
+
+
+decodeTouchEvent : (List ( Float, Float ) -> msg) -> Json.Decoder msg
 decodeTouchEvent tagger =
     let
         decodeTarget =
             Json.field "target" decodeOffset
 
-        decodeFirstTouch =
-            Json.at [ "touches", "0" ] decodeClientPos
+        decodeTouches =
+            Json.field "touches" <| decodeListLike decodeClientPos
+
+        minusPositions positions base =
+            List.map (\pos -> minusPos pos base) positions
     in
         Json.map tagger <|
-            Json.map2 minusPos decodeFirstTouch decodeTarget
+            Json.map2 minusPositions decodeTouches decodeTarget
 
 
 decodeOffset : Json.Decoder ( Float, Float )

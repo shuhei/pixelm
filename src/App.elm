@@ -75,6 +75,7 @@ type alias Model =
     { mode : Mode
     , isMouseDown : Bool
     , previousMouseDown : Maybe ( Int, Int )
+    , previousDistance : Maybe Float
     , foregroundColor : Color
     , history : History Frames
     , frames : Frames
@@ -143,6 +144,7 @@ init flags =
             { mode = Paint
             , isMouseDown = False
             , previousMouseDown = Nothing
+            , previousDistance = Nothing
             , foregroundColor = Color.black
             , history = History.initialize 50
             , frames =
@@ -191,6 +193,8 @@ type Msg
     | CloseModal
     | MouseDownOnCanvas ( Float, Float )
     | MouseMoveOnCanvas ( Float, Float )
+    | TouchStartOnCanvas (List ( Float, Float ))
+    | TouchMoveOnCanvas (List ( Float, Float ))
     | MouseUpOnCanvas
     | MouseWheelOnCanvas ( Float, Float ) ( Float, Float )
     | MouseDownOnContainer
@@ -351,69 +355,61 @@ update msg model =
             )
 
         MouseDownOnCanvas pos ->
-            let
-                pixelPos =
-                    getPixelPos model.pixelSize model.zoom model.offset pos
-            in
-                ( { model
-                    | history = History.push model.frames model.history
-                    , frames = updateCurrentFrame pixelPos model
-                    , isMouseDown = True
-                    , previousMouseDown = Just pixelPos
-                  }
-                , Cmd.none
-                )
+            ( handleSinglePointerDown model pos
+            , Cmd.none
+            )
 
         MouseMoveOnCanvas pos ->
-            let
-                pixelPos =
-                    getPixelPos model.pixelSize model.zoom model.offset pos
-            in
-                if model.isMouseDown then
-                    ( { model
-                        | frames = updateCurrentFrame pixelPos model
-                        , previousMouseDown = Just pixelPos
-                      }
-                    , Cmd.none
-                    )
-                else
-                    ( model, Cmd.none )
+            ( handleSinglePointerMove model pos
+            , Cmd.none
+            )
 
         MouseUpOnCanvas ->
             ( { model
                 | isMouseDown = False
                 , previousMouseDown = Nothing
+                , previousDistance = Nothing
               }
             , Cmd.none
             )
 
-        MouseWheelOnCanvas ( _, deltaY ) pos ->
+        TouchStartOnCanvas touches ->
             let
-                zoomBy =
-                    if deltaY > 0 then
-                        1.1
-                    else
-                        1 / 1.1
+                nextModel =
+                    case touches of
+                        t1 :: (t2 :: ts) ->
+                            { model
+                                | previousDistance = Just <| euclidDistance t1 t2
+                                , isMouseDown = True
+                            }
 
-                zoom =
-                    model.zoom * zoomBy
+                        t :: ts ->
+                            handleSinglePointerDown model t
 
-                offset =
-                    if deltaY > 0 then
-                        interpolate (originalPos model.zoom model.offset pos) model.offset (1 / zoomBy)
-                    else
-                        interpolate model.offset ( 0, 0 ) ((model.zoom - zoom) / (zoom * (model.zoom - 1)))
+                        [] ->
+                            model
             in
-                if zoom <= 1 then
-                    ( { model | zoom = 1, offset = ( 0, 0 ) }
-                    , Cmd.none
-                    )
-                else if zoom > 1 && zoom < 10 then
-                    ( { model | zoom = zoom, offset = offset }
-                    , Cmd.none
-                    )
-                else
-                    ( model, Cmd.none )
+                ( nextModel, Cmd.none )
+
+        TouchMoveOnCanvas touches ->
+            let
+                nextModel =
+                    case touches of
+                        t1 :: (t2 :: ts) ->
+                            handleDoublePointerEvent model t1 t2
+
+                        t :: ts ->
+                            handleSinglePointerMove model t
+
+                        [] ->
+                            model
+            in
+                ( nextModel, Cmd.none )
+
+        MouseWheelOnCanvas ( _, deltaY ) pos ->
+            ( handleZoom model deltaY pos
+            , Cmd.none
+            )
 
         MouseDownOnContainer ->
             ( { model
@@ -427,6 +423,7 @@ update msg model =
             ( { model
                 | isMouseDown = False
                 , previousMouseDown = Nothing
+                , previousDistance = Nothing
               }
             , Cmd.none
             )
@@ -437,6 +434,7 @@ update msg model =
                 , frames = SelectionList.swapCurrent frame model.frames
                 , isMouseDown = False
                 , previousMouseDown = Nothing
+                , previousDistance = Nothing
               }
             , Cmd.none
             )
@@ -447,6 +445,97 @@ update msg model =
               }
             , Cmd.none
             )
+
+
+euclidDistance : ( Float, Float ) -> ( Float, Float ) -> Float
+euclidDistance ( x1, y1 ) ( x2, y2 ) =
+    let
+        dx =
+            x2 - x1
+
+        dy =
+            y2 - y1
+    in
+        sqrt <| dx * dx + dy * dy
+
+
+handleZoom : Model -> Float -> ( Float, Float ) -> Model
+handleZoom model deltaY pos =
+    let
+        zoomBy =
+            if deltaY > 0 then
+                1.1
+            else
+                1 / 1.1
+
+        zoom =
+            model.zoom * zoomBy
+
+        offset =
+            if deltaY > 0 then
+                interpolate (originalPos model.zoom model.offset pos) model.offset (1 / zoomBy)
+            else
+                interpolate model.offset ( 0, 0 ) ((model.zoom - zoom) / (zoom * (model.zoom - 1)))
+    in
+        if zoom <= 1 then
+            { model | zoom = 1, offset = ( 0, 0 ) }
+        else if zoom > 1 && zoom < 10 then
+            { model | zoom = zoom, offset = offset }
+        else
+            model
+
+
+handleDoublePointerEvent : Model -> ( Float, Float ) -> ( Float, Float ) -> Model
+handleDoublePointerEvent model t1 t2 =
+    let
+        distance =
+            euclidDistance t1 t2
+    in
+        case model.previousDistance of
+            Nothing ->
+                { model
+                    | previousDistance = Just distance
+                    , previousMouseDown = Nothing
+                }
+
+            Just previousDistance ->
+                handleZoom
+                    { model
+                        | previousDistance = Just distance
+                        , previousMouseDown = Nothing
+                    }
+                    (distance - previousDistance)
+                    (interpolate t1 t2 0.5)
+
+
+handleSinglePointerDown : Model -> ( Float, Float ) -> Model
+handleSinglePointerDown model pos =
+    let
+        pixelPos =
+            getPixelPos model.pixelSize model.zoom model.offset pos
+    in
+        { model
+            | history = History.push model.frames model.history
+            , frames = updateCurrentFrame pixelPos model
+            , isMouseDown = True
+            , previousMouseDown = Just pixelPos
+        }
+
+
+handleSinglePointerMove : Model -> ( Float, Float ) -> Model
+handleSinglePointerMove model pos =
+    let
+        pixelPos =
+            getPixelPos model.pixelSize model.zoom model.offset pos
+    in
+        if model.isMouseDown then
+            { model
+                | frames = updateCurrentFrame pixelPos model
+                , previousMouseDown = Just pixelPos
+                , previousDistance = Nothing
+            }
+        else
+            model
 
 
 interpolate : ( Float, Float ) -> ( Float, Float ) -> Float -> ( Float, Float )
@@ -677,8 +766,8 @@ viewGrid resolution pixelSize zoom ( offsetX, offsetY ) mode grid =
             , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
             , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
             , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
-            , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent MouseDownOnCanvas
-            , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent MouseMoveOnCanvas
+            , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent TouchStartOnCanvas
+            , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent TouchMoveOnCanvas
             , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
             , Events.onWithStopAndPrevent "mousewheel" <| Events.decodeWheelEvent MouseWheelOnCanvas
             ]
