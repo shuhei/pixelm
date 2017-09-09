@@ -1011,6 +1011,7 @@ svgIcon path =
     Html.img
         [ HA.src path
         , HA.width 32
+        , HA.height 32
         ]
         []
 
