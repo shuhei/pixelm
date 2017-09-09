@@ -74,12 +74,12 @@ body {
   padding: 2px;
   display: inline-block;
   text-align: center;
-  border: 3px solid transparent;
+  border: 2px solid transparent;
 }
 
 .mode:hover,
 .mode--selected {
-  border: 3px solid #ccc;
+  border: 2px solid #ccc;
 }
 
 .mode img {

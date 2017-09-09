@@ -18,15 +18,6 @@ import SelectionList exposing (SelectionList)
 import History exposing (History)
 
 
----- CONSTANTS ----
-
-
-framePixelSize : Float
-framePixelSize =
-    4
-
-
-
 ---- MODEL ----
 
 
@@ -85,7 +76,8 @@ type alias Model =
     , images : ImagePaths
     , modalConfig : ModalConfig
     , resolution : Int
-    , pixelSize : Float
+    , canvasSize : Float
+    , frameSize : Float
     , zoom : Float
     , offset : ( Float, Float )
     }
@@ -132,14 +124,18 @@ colors =
     ]
 
 
-initialFrameSequence : Int
-initialFrameSequence =
-    0
-
-
 init : ImagePaths -> ( Model, Cmd Msg )
 init flags =
     let
+        initialFrameSequence =
+            0
+
+        initialResolution =
+            16
+
+        canvasSize =
+            320
+
         model =
             { mode = Paint
             , isMouseDown = False
@@ -149,15 +145,16 @@ init flags =
             , history = History.initialize 50
             , frames =
                 SelectionList.init <|
-                    Frame initialFrameSequence (emptyGrid 16)
+                    Frame initialFrameSequence (emptyGrid initialResolution)
             , frameSequence = initialFrameSequence + 1
             , fps = 10
             , frameIndex = 0
             , images = flags
             , modalConfig = NoModal
-            , resolution = 16
-            , pixelSize = 20
-            , zoom = 1
+            , resolution = initialResolution
+            , canvasSize = canvasSize
+            , frameSize = 64
+            , zoom = canvasSize / initialResolution
             , offset = ( 0, 0 )
             }
     in
@@ -459,14 +456,25 @@ euclidDistance ( x1, y1 ) ( x2, y2 ) =
         sqrt <| dx * dx + dy * dy
 
 
+zoomRate : Float
+zoomRate =
+    1.1
+
+
 handleZoom : Model -> Float -> ( Float, Float ) -> Model
 handleZoom model deltaY pos =
     let
+        minZoom =
+            model.canvasSize / toFloat model.resolution
+
+        maxZoom =
+            model.canvasSize / 4
+
         zoomBy =
             if deltaY > 0 then
-                1.1
+                zoomRate
             else
-                1 / 1.1
+                1 / zoomRate
 
         zoom =
             model.zoom * zoomBy
@@ -475,11 +483,14 @@ handleZoom model deltaY pos =
             if deltaY > 0 then
                 interpolate (originalPos model.zoom model.offset pos) model.offset (1 / zoomBy)
             else
-                interpolate model.offset ( 0, 0 ) ((model.zoom - zoom) / (zoom * (model.zoom - 1)))
+                interpolate
+                    model.offset
+                    ( 0, 0 )
+                    ((1 / zoom - 1 / model.zoom) / (1 / minZoom - 1 / model.zoom))
     in
-        if zoom <= 1 then
-            { model | zoom = 1, offset = ( 0, 0 ) }
-        else if zoom > 1 && zoom < 10 then
+        if zoom <= minZoom then
+            { model | zoom = minZoom, offset = ( 0, 0 ) }
+        else if zoom > minZoom && zoom < maxZoom then
             { model | zoom = zoom, offset = offset }
         else
             model
@@ -512,7 +523,7 @@ handleSinglePointerDown : Model -> ( Float, Float ) -> Model
 handleSinglePointerDown model pos =
     let
         pixelPos =
-            getPixelPos model.pixelSize model.zoom model.offset pos
+            getPixelPos model.zoom model.offset pos
     in
         { model
             | history = History.push model.frames model.history
@@ -526,7 +537,7 @@ handleSinglePointerMove : Model -> ( Float, Float ) -> Model
 handleSinglePointerMove model pos =
     let
         pixelPos =
-            getPixelPos model.pixelSize model.zoom model.offset pos
+            getPixelPos model.zoom model.offset pos
     in
         if model.isMouseDown then
             { model
@@ -554,13 +565,13 @@ originalPos zoom ( offsetX, offsetY ) ( x, y ) =
     )
 
 
-getPixelPos : Float -> Float -> ( Float, Float ) -> ( Float, Float ) -> ( Int, Int )
-getPixelPos pixelSize zoom offset pos =
+getPixelPos : Float -> ( Float, Float ) -> ( Float, Float ) -> ( Int, Int )
+getPixelPos zoom offset pos =
     let
         ( ox, oy ) =
             originalPos zoom offset pos
     in
-        ( floor (ox / pixelSize), floor (oy / pixelSize) )
+        ( floor ox, floor oy )
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -617,11 +628,11 @@ view model =
         [ HE.onMouseDown <| MouseDownOnContainer
         , HE.onMouseUp <| MouseUpOnContainer
         ]
-        [ viewGrid model.resolution model.pixelSize model.zoom model.offset model.mode model.frames.current.grid
+        [ viewGrid model.resolution model.canvasSize model.zoom model.offset model.mode model.frames.current.grid
         , viewMenus model.mode model.images
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
-        , viewFrames model.resolution model.images model.frameIndex model.frames
+        , viewFrames model.resolution model.frameSize model.images model.frameIndex model.frames
         , viewModal model.modalConfig (SelectionList.isSingle model.frames) model.foregroundColor
         ]
 
@@ -747,14 +758,14 @@ viewBox minX minY width height =
 
 
 viewGrid : Int -> Float -> Float -> ( Float, Float ) -> Mode -> Grid -> Html Msg
-viewGrid resolution pixelSize zoom ( offsetX, offsetY ) mode grid =
+viewGrid resolution canvasSize zoom ( offsetX, offsetY ) mode grid =
     let
         viewSize =
-            (toFloat resolution * pixelSize) / zoom
+            canvasSize / zoom
     in
         Html.div
             [ HA.class "pixel-grid-container"
-            , sizeStyle (toFloat resolution * pixelSize)
+            , sizeStyle canvasSize
             , HA.style
                 [ ( "cursor"
                   , if mode == Move then
@@ -773,12 +784,12 @@ viewGrid resolution pixelSize zoom ( offsetX, offsetY ) mode grid =
             ]
             [ Svg.svg
                 [ SA.class "pixel-grid"
-                , SA.width <| toString (toFloat resolution * pixelSize)
-                , SA.height <| toString (toFloat resolution * pixelSize)
+                , SA.width <| toString canvasSize
+                , SA.height <| toString canvasSize
                 , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
                 ]
-                [ viewRects pixelSize grid
-                , viewBorders resolution pixelSize
+                [ viewRects grid
+                , viewBorders resolution
                 ]
             ]
 
@@ -794,38 +805,38 @@ drawLine x1 y1 x2 y2 =
         []
 
 
-viewBorders : Int -> Float -> Svg msg
-viewBorders resolution pixelSize =
+viewBorders : Int -> Svg msg
+viewBorders resolution =
     let
         ns =
             List.range 0 (resolution - 1)
 
         pos n =
-            pixelSize * toFloat n + 0.5
+            toFloat n - 0.025
 
         vertical n =
-            drawLine (pos n) 0 (pos n) (toFloat resolution * pixelSize)
+            drawLine (pos n) 0 (pos n) (toFloat resolution)
 
         horizontal n =
-            drawLine 0 (pos n) (toFloat resolution * pixelSize) (pos n)
+            drawLine 0 (pos n) (toFloat resolution) (pos n)
     in
         Svg.g
             [ SA.class "grid-borders"
-            , SA.strokeWidth "1"
+            , SA.strokeWidth "0.05"
             , SA.stroke "white"
             ]
             (List.map vertical ns ++ List.map horizontal ns)
 
 
-viewRects : Float -> Grid -> Svg Msg
-viewRects size grid =
+viewRects : Grid -> Svg Msg
+viewRects grid =
     let
         makeRect col row pixel =
             Svg.rect
-                [ SA.width <| toString size
-                , SA.height <| toString size
-                , SA.x <| toString <| toFloat col * size
-                , SA.y <| toString <| toFloat row * size
+                [ SA.width "1"
+                , SA.height "1"
+                , SA.x <| toString <| toFloat col
+                , SA.y <| toString <| toFloat row
                 , SA.fill <| ColorUtil.toColorString pixel
                 ]
                 []
@@ -922,8 +933,8 @@ type FrameType
     | FramePreview
 
 
-viewFrames : Int -> ImagePaths -> Int -> Frames -> Html Msg
-viewFrames resolution images index frames =
+viewFrames : Int -> Float -> ImagePaths -> Int -> Frames -> Html Msg
+viewFrames resolution frameSize images index frames =
     Html.div
         [ HA.class "frame-list" ]
     <|
@@ -931,20 +942,17 @@ viewFrames resolution images index frames =
             [ if SelectionList.isSingle frames then
                 []
               else
-                [ viewFrame resolution FramePreview <| SelectionList.get index frames ]
-            , List.map (viewFrame resolution FrameNormal) <| Array.toList frames.previous
-            , [ viewFrame resolution FrameSelected frames.current ]
-            , List.map (viewFrame resolution FrameNormal) <| Array.toList frames.next
-            , [ viewAddFrame resolution images ]
+                [ viewFrame resolution frameSize FramePreview <| SelectionList.get index frames ]
+            , List.map (viewFrame resolution frameSize FrameNormal) <| Array.toList frames.previous
+            , [ viewFrame resolution frameSize FrameSelected frames.current ]
+            , List.map (viewFrame resolution frameSize FrameNormal) <| Array.toList frames.next
+            , [ viewAddFrame frameSize images ]
             ]
 
 
-viewFrame : Int -> FrameType -> Frame -> Html Msg
-viewFrame resolution frameType frame =
+viewFrame : Int -> Float -> FrameType -> Frame -> Html Msg
+viewFrame resolution frameSize frameType frame =
     let
-        canvasSize =
-            toFloat resolution * framePixelSize
-
         attrs =
             List.concat
                 [ [ HA.classList
@@ -953,7 +961,7 @@ viewFrame resolution frameType frame =
                         , ( "frame--selected", frameType == FrameSelected )
                         , ( "frame--preview", frameType == FramePreview )
                         ]
-                  , sizeStyle canvasSize
+                  , sizeStyle frameSize
                   ]
                 , if frameType == FramePreview then
                     []
@@ -973,19 +981,20 @@ viewFrame resolution frameType frame =
         Html.div
             attrs
             [ Svg.svg
-                [ SA.width <| toString canvasSize
-                , SA.height <| toString canvasSize
+                [ SA.width <| toString frameSize
+                , SA.height <| toString frameSize
+                , SA.viewBox <| viewBox 0 0 (toFloat resolution) (toFloat resolution)
                 ]
-                [ viewRects framePixelSize frame.grid
+                [ viewRects frame.grid
                 ]
             ]
 
 
-viewAddFrame : Int -> ImagePaths -> Html Msg
-viewAddFrame resolution images =
+viewAddFrame : Float -> ImagePaths -> Html Msg
+viewAddFrame frameSize images =
     Html.div
         [ HA.class "frame frame--plus"
-        , sizeStyle <| (toFloat resolution * framePixelSize)
+        , sizeStyle frameSize
         , HE.onClick AddFrame
         ]
         [ svgIcon images.plus ]
