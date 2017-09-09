@@ -787,6 +787,7 @@ viewGrid resolution canvasSize zoom ( offsetX, offsetY ) mode grid =
                 , SA.width <| toString canvasSize
                 , SA.height <| toString canvasSize
                 , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
+                , SA.shapeRendering "crispEdges"
                 ]
                 [ viewRects grid
                 , viewBorders resolution
@@ -801,6 +802,7 @@ drawLine x1 y1 x2 y2 =
         , SA.y1 <| toString y1
         , SA.x2 <| toString x2
         , SA.y2 <| toString y2
+        , HA.attribute "vector-effect" "non-scaling-stroke"
         ]
         []
 
@@ -811,18 +813,15 @@ viewBorders resolution =
         ns =
             List.range 0 (resolution - 1)
 
-        pos n =
-            toFloat n - 0.025
-
         vertical n =
-            drawLine (pos n) 0 (pos n) (toFloat resolution)
+            drawLine (toFloat n) 0 (toFloat n) (toFloat resolution)
 
         horizontal n =
-            drawLine 0 (pos n) (toFloat resolution) (pos n)
+            drawLine 0 (toFloat n) (toFloat resolution) (toFloat n)
     in
         Svg.g
             [ SA.class "grid-borders"
-            , SA.strokeWidth "0.05"
+            , SA.strokeWidth "1"
             , SA.stroke "white"
             ]
             (List.map vertical ns ++ List.map horizontal ns)
