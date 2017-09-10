@@ -135,21 +135,17 @@ iOS does not support `dblclick` event. To detect double tap on iOS:
 -}
 prepareDoubleClick : Html.Attribute msg
 prepareDoubleClick =
-    HA.attribute "onclick" prepareScript
-
-
-prepareScript : String
-prepareScript =
-    String.concat
-        [ "var el = event.currentTarget;"
-        , "setTimeout(function () {"
-        , "  if (el.dataset.timer) { clearTimeout(parseInt(el.dataset.timer, 10)); }"
-        , "  el.dataset.timer = setTimeout(function () {"
-        , "    delete el.dataset.clicked;"
-        , "  }, 500);"
-        , "  el.dataset.clicked = 'true';"
-        , "});"
-        ]
+    HA.attribute "onclick"
+        """
+        var el = event.currentTarget;
+        setTimeout(function () {
+          if (el.dataset.timer) { clearTimeout(parseInt(el.dataset.timer, 10)); }
+          el.dataset.timer = setTimeout(function () {
+            delete el.dataset.clicked;
+          }, 500);
+          el.dataset.clicked = 'true';
+        });
+        """
 
 
 onSingleOrDoubleClick : msg -> msg -> Html.Attribute msg
