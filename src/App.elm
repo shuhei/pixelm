@@ -284,6 +284,10 @@ update msg model =
 
                             AnimatedGIFFormat ->
                                 "animated-gif"
+                    , options =
+                        { pixelSize = 20
+                        , resolution = model.resolution
+                        }
                     }
             in
                 ( { model | modalConfig = NoModal }
@@ -612,6 +616,7 @@ updateCurrentFrame ( col, row ) model =
 type alias DownloadData =
     { grids : List (List (List RGBA))
     , format : String
+    , options : { pixelSize : Float, resolution : Int }
     }
 
 

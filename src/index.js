@@ -5,10 +5,6 @@ var GIF = require('gif.js');
 var Elm = require('./App.elm');
 require('./main.css');
 
-// TOOD: Share these with Elm.
-var pixelSize = 20;
-var resolution = 16;
-
 var root = document.getElementById('root');
 
 var app = Elm.App.embed(root, {
@@ -25,33 +21,33 @@ var app = Elm.App.embed(root, {
 app.ports.download.subscribe(function (data) {
   switch (data.format) {
     case 'svg':
-      exportSvg(data.grids[0]);
+      exportSvg(data.grids[0], data.options);
       break;
     case 'gif':
-      exportGif(data.grids[0]);
+      exportGif(data.grids[0], data.options);
       break;
     case 'animated-gif':
-      exportAnimatedGif(data.grids);
+      exportAnimatedGif(data.grids, data.options);
       break;
   }
 });
 
-function exportSvg(grid) {
+function exportSvg(grid, options) {
   var rects = grid.map(function (row, y) {
     return row.map(function (rgba, x) {
       return buildRect(x, y, rgba);
     }).join('');
   }).join('');
-  var size = pixelSize * resolution;
+  var size = options.pixelSize * options.resolution;
   var svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="',
     size,
     '" height="',
     size,
     '" viewBox="0 0 ',
-    size,
+    options.resolution,
     ' ',
-    size,
+    options.resolution,
     '">',
     rects,
     '</svg>'
@@ -66,18 +62,12 @@ function buildRect(x, y, rgba) {
   if (rgba.alpha === 0) {
     return '';
   }
-  var xx = x * pixelSize;
-  var yy = y * pixelSize;
   var color = fillColor(rgba);
   return [
-    '<rect width="',
-    pixelSize,
-    '" height="',
-    pixelSize,
-    '" x="',
-    xx,
+    '<rect width="1" height="1" x="',
+    x,
     '" y="',
-    yy,
+    y,
     '" fill="',
     color,
     '" />'
@@ -91,8 +81,8 @@ function createCanvas(width, height) {
   return canvas;
 }
 
-function exportAnimatedGif(grids) {
-  const size = pixelSize * resolution;
+function exportAnimatedGif(grids, options) {
+  const size = options.pixelSize * options.resolution;
   var gif = new GIF({
     width: size,
     height: size
@@ -101,7 +91,7 @@ function exportAnimatedGif(grids) {
   var ctx = canvas.getContext('2d');
   for (var i = 0; i < grids.length; i++) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawInCanvas(ctx, grids[i]);
+    drawInCanvas(ctx, grids[i], options);
     gif.addFrame(ctx, { copy: true, delay: 100 });
   }
   gif.on('finished', function (blob) {
@@ -110,25 +100,26 @@ function exportAnimatedGif(grids) {
   gif.render();
 }
 
-function exportGif(grid) {
-  var canvas = createCanvas(pixelSize * resolution, pixelSize * resolution);
+function exportGif(grid, options) {
+  var size = options.pixelSize * options.resolution;
+  var canvas = createCanvas(size, size);
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawInCanvas(ctx, grid);
+  drawInCanvas(ctx, grid, options);
   canvas.toBlob(function (blob) {
     fileSaver.saveAs(blob, 'pixels.gif');
   }, 'image/gif');
 }
 
-function drawInCanvas(ctx, grid) {
+function drawInCanvas(ctx, grid, options) {
   for (var row = 0; row < grid.length; row++) {
     var cols = grid[row];
     for (var col = 0; col < cols.length; col++) {
       var rgba = cols[col];
-      var x = col * pixelSize;
-      var y = row * pixelSize;
+      var x = col * options.pixelSize;
+      var y = row * options.pixelSize;
       ctx.fillStyle = fillColor(rgba);
-      ctx.fillRect(x, y, pixelSize, pixelSize);
+      ctx.fillRect(x, y, options.pixelSize, options.pixelSize);
     }
   }
 }
