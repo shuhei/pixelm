@@ -147,7 +147,7 @@ init flags =
                 SelectionList.init <|
                     Frame initialFrameSequence (emptyGrid initialResolution)
             , frameSequence = initialFrameSequence + 1
-            , fps = 10
+            , fps = 5
             , frameIndex = 0
             , images = flags
             , modalConfig = NoModal
@@ -287,6 +287,7 @@ update msg model =
                     , options =
                         { pixelSize = 20
                         , resolution = model.resolution
+                        , fps = model.fps
                         }
                     }
             in
@@ -616,7 +617,11 @@ updateCurrentFrame ( col, row ) model =
 type alias DownloadData =
     { grids : List (List (List RGBA))
     , format : String
-    , options : { pixelSize : Float, resolution : Int }
+    , options :
+        { pixelSize : Float
+        , resolution : Int
+        , fps : Int
+        }
     }
 
 
@@ -1035,7 +1040,9 @@ svgIcon path =
 
 tick : Model -> Sub Msg
 tick model =
-    Time.every (1000 / (60 / toFloat model.fps) * Time.millisecond) (\_ -> Tick)
+    Time.every
+        ((1000 / toFloat model.fps) * Time.millisecond)
+        (\_ -> Tick)
 
 
 main : Program ImagePaths Model Msg

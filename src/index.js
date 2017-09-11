@@ -88,11 +88,12 @@ function exportAnimatedGif(grids, options) {
     height: size
   });
   var canvas = createCanvas(size, size);
+  var delay = 1000 / options.fps;
   var ctx = canvas.getContext('2d');
   for (var i = 0; i < grids.length; i++) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawInCanvas(ctx, grids[i], options);
-    gif.addFrame(ctx, { copy: true, delay: 100 });
+    gif.addFrame(ctx, { copy: true, delay: delay });
   }
   gif.on('finished', function (blob) {
     fileSaver.saveAs(blob, 'animation.gif');
