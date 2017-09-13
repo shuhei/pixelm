@@ -4,10 +4,19 @@ module ColorUtil
         , toColorString
         , hsv
         , hue
+        , toHsv
         , transparent
         )
 
 import Color exposing (Color)
+
+
+type alias HSVA =
+    { hue : Float
+    , saturation : Float
+    , value : Float
+    , alpha : Float
+    }
 
 
 type alias RGBA =
@@ -46,8 +55,8 @@ modFloat x y =
 
 {-| <http://www.rapidtables.com/convert/color/hsv-to-rgb.htm>
 -}
-hsv : Float -> Float -> Float -> Color
-hsv hue saturation value =
+hsv : Float -> Float -> Float -> Float -> Color
+hsv hue saturation value alpha =
     let
         h =
             modFloat (hue / pi * 180) 360
@@ -65,7 +74,7 @@ hsv hue saturation value =
             floor ((m + x) * 255)
 
         rgb r g b =
-            Color.rgb (normalize m r) (normalize m g) (normalize m b)
+            Color.rgba (normalize m r) (normalize m g) (normalize m b) alpha
     in
         if 0 <= h && h < 60 then
             rgb c x 0
@@ -79,6 +88,49 @@ hsv hue saturation value =
             rgb x 0 c
         else
             rgb c 0 x
+
+
+toHsv : Color -> HSVA
+toHsv color =
+    let
+        { red, green, blue, alpha } =
+            Color.toRgb color
+
+        r =
+            toFloat red / 255
+
+        g =
+            toFloat green / 255
+
+        b =
+            toFloat blue / 255
+
+        cmax =
+            max r (max g b)
+
+        cmin =
+            min r (min g b)
+
+        delta =
+            cmax - cmin
+    in
+        { hue =
+            if delta == 0 then
+                0
+            else if cmax == r then
+                pi / 3 * modFloat ((g - b) / delta) 6
+            else if cmax == g then
+                pi / 3 * ((b - r) / delta + 2)
+            else
+                pi / 3 * ((r - g) / delta + 4)
+        , saturation =
+            if cmax == 0 then
+                0
+            else
+                delta / cmax
+        , value = cmax
+        , alpha = alpha
+        }
 
 
 hue : Color -> Float

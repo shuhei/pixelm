@@ -26,17 +26,54 @@ body {
   display: flex;
 }
 
-.color-picker__hues {
+.color-picker__color {
+  width: 240px;
+  height: 240px;
+  margin-right: 20px;
+}
+
+.color-picker__saturation {
+  width: 240px;
+  height: 240px;
+  background-image: linear-gradient(to right, #fff, rgba(204, 154, 129, 0));
+}
+
+.color-picker__value {
+  width: 240px;
+  height: 240px;
+  background-image: linear-gradient(to top, #000, rgba(204, 154, 129, 0));
+  position: relative;
+}
+
+.color-picker__sv-pointer {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  position: absolute;
+  box-shadow: 0 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.color-picker__hue {
   width: 20px;
+  height: 240px;
+  background: linear-gradient(to bottom, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+  position: relative;
+}
+
+.color-picker__hue-pointer {
+  width: 20px;
+  height: 6px;
+  border: 2px solid #fff;
+  box-sizing: border-box;
+  box-shadow: 0 0 1px 1px rgba(0, 0, 0, 0.5);
+  position: absolute;
+  left: 0;
 }
 
 .color-picker__row {
   display: flex;
-}
-
-.color-picker__colors {
-  width: 240px;
-  margin-right: 20px;
 }
 
 .color-selector {

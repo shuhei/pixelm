@@ -59,7 +59,7 @@ type ModalConfig
     = NoModal
     | FrameModal Frame
     | DownloadModal
-    | ColorModal Float
+    | ColorModal
 
 
 type alias Model =
@@ -174,6 +174,8 @@ type DownloadFormat
 type Msg
     = NoOp
     | SelectColor Color
+    | UpdateHue Float
+    | UpdateSV Float Float
     | SelectMode Mode
     | ClearCanvas
     | AddFrame
@@ -186,7 +188,6 @@ type Msg
     | ShowFrameModal Frame
     | ShowDownloadModal
     | ShowColorModal
-    | SelectHue Float
     | CloseModal
     | MouseDownOnCanvas ( Float, Float )
     | MouseMoveOnCanvas ( Float, Float )
@@ -220,6 +221,30 @@ update msg model =
               }
             , Cmd.none
             )
+
+        UpdateHue newHue ->
+            let
+                { hue, saturation, value, alpha } =
+                    ColorUtil.toHsv model.foregroundColor
+
+                newColor =
+                    ColorUtil.hsv newHue saturation value alpha
+            in
+                ( { model | foregroundColor = newColor }
+                , Cmd.none
+                )
+
+        UpdateSV newSaturatioin newValue ->
+            let
+                { hue, saturation, value, alpha } =
+                    ColorUtil.toHsv model.foregroundColor
+
+                newColor =
+                    ColorUtil.hsv hue newSaturatioin newValue alpha
+            in
+                ( { model | foregroundColor = newColor }
+                , Cmd.none
+                )
 
         ClearCanvas ->
             ( { model
@@ -341,13 +366,8 @@ update msg model =
 
         ShowColorModal ->
             ( { model
-                | modalConfig = ColorModal <| ColorUtil.hue model.foregroundColor
+                | modalConfig = ColorModal
               }
-            , Cmd.none
-            )
-
-        SelectHue hue ->
-            ( { model | modalConfig = ColorModal hue }
             , Cmd.none
             )
 
@@ -688,8 +708,8 @@ viewModal config isSingleFrame foregroundColor =
                     else
                         [ duplicateButton frame, deleteButton frame, closeButton ]
 
-                ColorModal hue ->
-                    viewColorModal hue foregroundColor
+                ColorModal ->
+                    viewColorModal foregroundColor
     in
         Html.div
             [ HA.classList
@@ -706,44 +726,24 @@ viewModal config isSingleFrame foregroundColor =
             ]
 
 
-viewColorModal : Float -> Color -> List (Html Msg)
-viewColorModal selectedHue selectedColor =
+viewColorModal : Color -> List (Html Msg)
+viewColorModal selectedColor =
     let
-        zeroToOne count =
-            List.range 0 (count - 1)
-                |> List.map (\i -> toFloat i / toFloat (count - 1))
+        color =
+            ColorUtil.hsv (ColorUtil.hue selectedColor) 1 1 1
+                |> ColorUtil.toColorString
 
-        hues count =
-            zeroToOne (count + 1)
-                |> List.take count
-                |> List.map (\hue -> ColorUtil.hsv (degrees 360 * hue) 1 1)
+        { hue, saturation, value, alpha } =
+            ColorUtil.toHsv selectedColor
 
-        hsvs hue count =
-            zeroToOne count
-                |> List.reverse
-                |> List.map
-                    (\value ->
-                        zeroToOne count
-                            |> List.map (\saturation -> ColorUtil.hsv hue saturation value)
-                    )
+        pickHue ( _, y ) =
+            UpdateHue <| 2 * pi * y / 240
 
-        svPickers =
-            hsvs selectedHue 12
-                |> List.map
-                    (\colors ->
-                        Html.div [ HA.class "color-picker__row" ] <|
-                            List.map (\c -> viewColor [] SelectColor (c == selectedColor && Color.black /= c) c) colors
-                    )
+        pickSV ( x, y ) =
+            UpdateSV (x / 240) (1 - y / 240)
 
-        selectHue color =
-            SelectHue <| ColorUtil.hue color
-
-        closeHue hue =
-            hue - 0.001 <= selectedHue && selectedHue <= hue + 0.001
-
-        huePickers =
-            hues 12
-                |> List.map (\h -> viewColor [] selectHue (closeHue <| ColorUtil.hue h) h)
+        toPx num =
+            toString num ++ "px"
     in
         [ Html.div
             [ HA.class "color-selector__row" ]
@@ -751,11 +751,36 @@ viewColorModal selectedHue selectedColor =
         , Html.div
             [ HA.class "color-picker" ]
             [ Html.div
-                [ HA.class "color-picker__colors" ]
-                svPickers
+                [ HA.class "color-picker__color"
+                , HA.style [ ( "background-color", color ) ]
+                , HE.on "click" <| Events.decodeMouseEvent pickSV
+                ]
+                [ Html.div
+                    [ HA.class "color-picker__saturation" ]
+                    [ Html.div
+                        [ HA.class "color-picker__value" ]
+                        [ Html.div
+                            [ HA.class "color-picker__sv-pointer"
+                            , HA.style
+                                [ ( "left", toPx <| saturation * 240 - 5 )
+                                , ( "top", toPx <| (1 - value) * 240 - 5 )
+                                ]
+                            ]
+                            []
+                        ]
+                    ]
+                ]
             , Html.div
-                [ HA.class "color-picker__hues" ]
-                huePickers
+                [ HA.class "color-picker__hue"
+                , HE.on "click" <| Events.decodeMouseEvent pickHue
+                ]
+                [ Html.div
+                    [ HA.class "color-picker__hue-pointer"
+                    , HA.style
+                        [ ( "top", toPx <| 240 * hue / (2 * pi) - 3 ) ]
+                    ]
+                    []
+                ]
             ]
         ]
 
