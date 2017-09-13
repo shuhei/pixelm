@@ -753,7 +753,7 @@ viewColorModal selectedColor =
             [ Html.div
                 [ HA.class "color-picker__color"
                 , HA.style [ ( "background-color", color ) ]
-                , Events.onWithStopAndPrevent "click" <| Events.decodeMouseEvent pickSV
+                , HE.on "click" <| Events.decodeMouseEvent pickSV
                 ]
                 [ Html.div
                     [ HA.class "color-picker__saturation" ]
@@ -772,7 +772,7 @@ viewColorModal selectedColor =
                 ]
             , Html.div
                 [ HA.class "color-picker__hue"
-                , Events.onWithStopAndPrevent "click" <| Events.decodeMouseEvent pickHue
+                , HE.on "click" <| Events.decodeMouseEvent pickHue
                 ]
                 [ Html.div
                     [ HA.class "color-picker__hue-pointer"
