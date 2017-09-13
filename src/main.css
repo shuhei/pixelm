@@ -24,6 +24,7 @@ body {
 
 .color-picker {
   display: flex;
+  margin: 10px 0;
 }
 
 .color-picker__color {
@@ -185,7 +186,7 @@ body {
 
 .modal-content {
   background-color: #fff;
-  margin: 15% auto;
+  margin: 50px auto 0;
   padding: 20px;
   border: 1px solid #888;
   width: 80%;
@@ -200,6 +201,10 @@ body {
   border: 0 none;
   cursor: pointer;
   margin: 10px 0;
+}
+
+.modal-button:last-child {
+  margin-bottom: 0;
 }
 
 .modal-button--default {

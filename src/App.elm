@@ -729,7 +729,7 @@ viewModal config isSingleFrame foregroundColor =
                         [ duplicateButton frame, deleteButton frame, closeButton ]
 
                 ColorModal hue ->
-                    viewColorModal hue foregroundColor
+                    List.append (viewColorModal hue foregroundColor) [ closeButton ]
     in
         Html.div
             [ HA.classList
