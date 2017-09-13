@@ -59,7 +59,7 @@ type ModalConfig
     = NoModal
     | FrameModal Frame
     | DownloadModal
-    | ColorModal
+    | ColorModal Float
 
 
 type alias Model =
@@ -211,16 +211,18 @@ update msg model =
             ( { model | mode = mode }, Cmd.none )
 
         SelectColor color ->
-            ( { model
-                | foregroundColor = color
-                , mode =
+            let
+                mode =
                     if model.mode == Bucket then
                         Bucket
                     else
                         Paint
-              }
-            , Cmd.none
-            )
+            in
+                ( updateColorModal
+                    (ColorUtil.hue color)
+                    { model | foregroundColor = color, mode = mode }
+                , Cmd.none
+                )
 
         UpdateHue newHue ->
             let
@@ -230,7 +232,7 @@ update msg model =
                 newColor =
                     ColorUtil.hsv newHue saturation value alpha
             in
-                ( { model | foregroundColor = newColor }
+                ( updateColorModal newHue { model | foregroundColor = newColor }
                 , Cmd.none
                 )
 
@@ -239,10 +241,18 @@ update msg model =
                 { hue, saturation, value, alpha } =
                     ColorUtil.toHsv model.foregroundColor
 
+                newHue =
+                    case model.modalConfig of
+                        ColorModal selectedHue ->
+                            selectedHue
+
+                        _ ->
+                            hue
+
                 newColor =
-                    ColorUtil.hsv hue newSaturatioin newValue alpha
+                    ColorUtil.hsv newHue newSaturatioin newValue alpha
             in
-                ( { model | foregroundColor = newColor }
+                ( updateColorModal newHue { model | foregroundColor = newColor }
                 , Cmd.none
                 )
 
@@ -366,7 +376,7 @@ update msg model =
 
         ShowColorModal ->
             ( { model
-                | modalConfig = ColorModal
+                | modalConfig = ColorModal <| ColorUtil.hue model.foregroundColor
               }
             , Cmd.none
             )
@@ -467,6 +477,16 @@ update msg model =
               }
             , Cmd.none
             )
+
+
+updateColorModal : Float -> Model -> Model
+updateColorModal hue model =
+    case model.modalConfig of
+        ColorModal _ ->
+            { model | modalConfig = ColorModal hue }
+
+        _ ->
+            model
 
 
 euclidDistance : ( Float, Float ) -> ( Float, Float ) -> Float
@@ -708,8 +728,8 @@ viewModal config isSingleFrame foregroundColor =
                     else
                         [ duplicateButton frame, deleteButton frame, closeButton ]
 
-                ColorModal ->
-                    viewColorModal foregroundColor
+                ColorModal hue ->
+                    viewColorModal hue foregroundColor
     in
         Html.div
             [ HA.classList
@@ -726,11 +746,13 @@ viewModal config isSingleFrame foregroundColor =
             ]
 
 
-viewColorModal : Color -> List (Html Msg)
-viewColorModal selectedColor =
+{-| Keep hue in order to change hue even when a grayscale color is selected
+-}
+viewColorModal : Float -> Color -> List (Html Msg)
+viewColorModal selectedHue selectedColor =
     let
         color =
-            ColorUtil.hsv (ColorUtil.hue selectedColor) 1 1 1
+            ColorUtil.hsv selectedHue 1 1 1
                 |> ColorUtil.toColorString
 
         { hue, saturation, value, alpha } =
@@ -777,7 +799,7 @@ viewColorModal selectedColor =
                 [ Html.div
                     [ HA.class "color-picker__hue-pointer"
                     , HA.style
-                        [ ( "top", toPx <| 240 * hue / (2 * pi) - 3 ) ]
+                        [ ( "top", toPx <| 240 * selectedHue / (2 * pi) - 3 ) ]
                     ]
                     []
                 ]
