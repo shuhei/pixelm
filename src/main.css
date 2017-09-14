@@ -5,7 +5,7 @@ body {
 }
 
 body {
-  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Source Sans Pro', 'Helvetica Neue', sans-serif;
   font-size: 30px;
   margin: 0;
   text-align: center;
@@ -217,4 +217,20 @@ body {
   color: #fff;
   background-color: #90c;
   border-bottom: 3px solid #309;
+}
+
+.settings-radios {
+  text-align: left;
+  font-size: 24px;
+}
+
+.settings-radio {
+  margin-right: 15px;
+  cursor: pointer;
+}
+
+.settings-radio input {
+  vertical-align: top;
+  margin-top: 8px;
+  margin-right: 5px;
 }

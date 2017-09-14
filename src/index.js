@@ -16,7 +16,8 @@ var app = Elm.App.embed(root, {
   plus : require('./images/plus.svg'),
   undo: require('./images/undo.svg'),
   redo: require('./images/redo.svg'),
-  download: require('./images/download.svg')
+  download: require('./images/download.svg'),
+  settings: require('./images/settings.svg')
 });
 app.ports.download.subscribe(function (data) {
   switch (data.format) {
