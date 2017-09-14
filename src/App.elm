@@ -52,6 +52,7 @@ type alias ImagePaths =
     , undo : String
     , redo : String
     , download : String
+    , settings : String
     }
 
 
@@ -60,6 +61,7 @@ type ModalConfig
     | FrameModal Frame
     | DownloadModal
     | ColorModal Float
+    | SettingsModal
 
 
 type alias Model =
@@ -188,6 +190,7 @@ type Msg
     | ShowFrameModal Frame
     | ShowDownloadModal
     | ShowColorModal
+    | ShowSettingsModal
     | CloseModal
     | MouseDownOnCanvas ( Float, Float )
     | MouseMoveOnCanvas ( Float, Float )
@@ -378,6 +381,11 @@ update msg model =
             ( { model
                 | modalConfig = ColorModal <| ColorUtil.hue model.foregroundColor
               }
+            , Cmd.none
+            )
+
+        ShowSettingsModal ->
+            ( { model | modalConfig = SettingsModal }
             , Cmd.none
             )
 
@@ -730,6 +738,9 @@ viewModal config isSingleFrame foregroundColor =
 
                 ColorModal hue ->
                     List.append (viewColorModal hue foregroundColor) [ closeButton ]
+
+                SettingsModal ->
+                    [ closeButton ]
     in
         Html.div
             [ HA.classList
@@ -903,34 +914,43 @@ viewRects grid =
         Svg.g [] rects
 
 
+viewMenu : Bool -> Msg -> String -> Html Msg -> Html Msg
+viewMenu selected msg label content =
+    Html.a
+        [ HA.classList
+            [ ( "mode", True )
+            , ( "mode--selected", selected )
+            ]
+        , HA.href "#"
+        , HA.title label
+        , HE.onClick msg
+        , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
+        ]
+        [ content ]
+
+
 viewMenus : Mode -> ImagePaths -> Html Msg
 viewMenus selectedMode images =
     let
-        menu selected msg label content =
-            Html.a
-                [ HA.classList
-                    [ ( "mode", True )
-                    , ( "mode--selected", selected )
-                    ]
-                , HA.href "#"
-                , HA.title label
-                , HE.onClick msg
-                , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
-                ]
-                [ content ]
-
         modeMenu mode content =
-            menu (mode == selectedMode) (SelectMode mode) content
+            viewMenu (mode == selectedMode) (SelectMode mode) content
     in
         Html.div [ HA.class "menu" ]
-            [ modeMenu Paint "Paint" <| svgIcon images.pencil
-            , modeMenu Eraser "Eraser" <| svgIcon images.eraser
-            , modeMenu Bucket "Bucket" <| svgIcon images.bucket
-            , modeMenu Move "Move" <| svgIcon images.move
-            , menu False ClearCanvas "Clear" <| svgIcon images.trash
-            , menu False Undo "Undo" <| svgIcon images.undo
-            , menu False Redo "Redo" <| svgIcon images.redo
-            , menu False ShowDownloadModal "Download" <| svgIcon images.download
+            [ Html.div
+                []
+                [ modeMenu Paint "Paint" <| svgIcon images.pencil
+                , modeMenu Eraser "Eraser" <| svgIcon images.eraser
+                , modeMenu Bucket "Bucket" <| svgIcon images.bucket
+                , modeMenu Move "Move" <| svgIcon images.move
+                , viewMenu False ClearCanvas "Clear" <| svgIcon images.trash
+                , viewMenu False ShowSettingsModal "Settings" <| svgIcon images.settings
+                , viewMenu False ShowDownloadModal "Download" <| svgIcon images.download
+                ]
+            , Html.div
+                []
+                [ viewMenu False Undo "Undo" <| svgIcon images.undo
+                , viewMenu False Redo "Redo" <| svgIcon images.redo
+                ]
             ]
 
 
