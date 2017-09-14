@@ -61,7 +61,7 @@ type ModalConfig
     | FrameModal Frame
     | DownloadModal
     | ColorModal Float
-    | SettingsModal
+    | SettingsModal Int
 
 
 type alias Model =
@@ -191,6 +191,8 @@ type Msg
     | ShowDownloadModal
     | ShowColorModal
     | ShowSettingsModal
+    | UpdateFps Int
+    | UpdateSettings Int
     | CloseModal
     | MouseDownOnCanvas ( Float, Float )
     | MouseMoveOnCanvas ( Float, Float )
@@ -385,7 +387,17 @@ update msg model =
             )
 
         ShowSettingsModal ->
-            ( { model | modalConfig = SettingsModal }
+            ( { model | modalConfig = SettingsModal model.fps }
+            , Cmd.none
+            )
+
+        UpdateFps fps ->
+            ( updateSettingsModal fps model
+            , Cmd.none
+            )
+
+        UpdateSettings fps ->
+            ( { model | fps = Debug.log "fps" fps, modalConfig = NoModal }
             , Cmd.none
             )
 
@@ -492,6 +504,16 @@ updateColorModal hue model =
     case model.modalConfig of
         ColorModal _ ->
             { model | modalConfig = ColorModal hue }
+
+        _ ->
+            model
+
+
+updateSettingsModal : Int -> Model -> Model
+updateSettingsModal fps model =
+    case model.modalConfig of
+        SettingsModal _ ->
+            { model | modalConfig = SettingsModal fps }
 
         _ ->
             model
@@ -695,24 +717,40 @@ view model =
         ]
 
 
+viewModalButton : String -> String -> msg -> Html msg
+viewModalButton style text msg =
+    Html.button
+        [ HA.class <| "modal-button modal-button--" ++ style
+        , Events.onWithStopAndPrevent "click" <| Json.succeed msg
+        ]
+        [ Html.text text ]
+
+
 viewModal : ModalConfig -> Bool -> Color -> Html Msg
 viewModal config isSingleFrame foregroundColor =
     let
-        viewButton style text msg =
-            Html.button
-                [ HA.class <| "modal-button modal-button--" ++ style
-                , Events.onWithStopAndPrevent "click" <| Json.succeed msg
-                ]
-                [ Html.text text ]
-
         deleteButton frame =
-            viewButton "primary" "Delete Frame" <| DeleteFrame frame
+            viewModalButton "primary" "Delete Frame" <| DeleteFrame frame
 
         duplicateButton frame =
-            viewButton "primary" "Duplicate Frame" <| DuplicateFrame frame
+            viewModalButton "primary" "Duplicate Frame" <| DuplicateFrame frame
 
         closeButton =
-            viewButton "default" "Close" CloseModal
+            viewModalButton "default" "Close" CloseModal
+
+        radioButton name checked label msg =
+            Html.label
+                [ HA.class "settings-radio"
+                , HE.onClick msg
+                ]
+                [ Html.input
+                    [ HA.type_ "radio"
+                    , HA.name name
+                    , HA.checked checked
+                    ]
+                    []
+                , Html.text label
+                ]
 
         content =
             case config of
@@ -721,12 +759,12 @@ viewModal config isSingleFrame foregroundColor =
 
                 DownloadModal ->
                     if isSingleFrame then
-                        [ viewButton "primary" "SVG" <| Download SVGFormat
-                        , viewButton "primary" "GIF" <| Download GIFFormat
+                        [ viewModalButton "primary" "SVG" <| Download SVGFormat
+                        , viewModalButton "primary" "GIF" <| Download GIFFormat
                         , closeButton
                         ]
                     else
-                        [ viewButton "primary" "Animated GIF" <| Download AnimatedGIFFormat
+                        [ viewModalButton "primary" "Animated GIF" <| Download AnimatedGIFFormat
                         , closeButton
                         ]
 
@@ -739,8 +777,15 @@ viewModal config isSingleFrame foregroundColor =
                 ColorModal hue ->
                     List.append (viewColorModal hue foregroundColor) [ closeButton ]
 
-                SettingsModal ->
-                    [ closeButton ]
+                SettingsModal fps ->
+                    [ Html.div
+                        [ HA.class "settings-radios" ]
+                        [ radioButton "fps" (fps == 5) "5 FPS" (UpdateFps 5)
+                        , radioButton "fps" (fps == 10) "10 FPS" (UpdateFps 10)
+                        ]
+                    , viewModalButton "primary" "Save" <| UpdateSettings fps
+                    , closeButton
+                    ]
     in
         Html.div
             [ HA.classList
