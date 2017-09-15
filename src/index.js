@@ -1,9 +1,10 @@
+require('./main.css');
 require('blueimp-canvas-to-blob');
 require('mobile-drag-drop').polyfill();
 var fileSaver = require('file-saver');
 var GIF = require('gif.js');
 var Elm = require('./App.elm');
-require('./main.css');
+import registerServiceWorker from './registerServiceWorker';
 
 var root = document.getElementById('root');
 
@@ -148,3 +149,5 @@ setTimeout(function () {
     e.stopPropagation();
   });
 }, 500);
+
+registerServiceWorker();
