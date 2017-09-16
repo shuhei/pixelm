@@ -9,7 +9,6 @@ import Html.Lazy as HL
 import Json.Decode as Json
 import Svg exposing (Svg)
 import Svg.Attributes as SA
-import Time exposing (Time)
 import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
@@ -74,7 +73,6 @@ type alias Model =
     , frames : Frames
     , frameSequence : Int
     , fps : Int
-    , frameIndex : Int
     , images : ImagePaths
     , modalConfig : ModalConfig
     , resolution : Int
@@ -150,7 +148,6 @@ init flags =
                     Frame initialFrameSequence (emptyGrid initialResolution)
             , frameSequence = initialFrameSequence + 1
             , fps = 5
-            , frameIndex = 0
             , images = flags
             , modalConfig = NoModal
             , resolution = initialResolution
@@ -203,7 +200,6 @@ type Msg
     | MouseDownOnContainer
     | MouseUpOnContainer
     | DropOnFrame Frame
-    | Tick
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -397,7 +393,7 @@ update msg model =
             )
 
         UpdateSettings fps ->
-            ( { model | fps = Debug.log "fps" fps, modalConfig = NoModal }
+            ( { model | fps = fps, modalConfig = NoModal }
             , Cmd.none
             )
 
@@ -487,13 +483,6 @@ update msg model =
                 , isMouseDown = False
                 , previousMouseDown = Nothing
                 , previousDistance = Nothing
-              }
-            , Cmd.none
-            )
-
-        Tick ->
-            ( { model
-                | frameIndex = (model.frameIndex + 1) % SelectionList.length model.frames
               }
             , Cmd.none
             )
@@ -712,7 +701,7 @@ view model =
         , viewMenus model.mode model.images
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionList.toArray model.frames)
-        , viewFrames model.resolution model.frameSize model.images model.frameIndex model.frames
+        , viewFrames model.resolution model.frameSize model.images model.fps model.frames
         , viewModal model.modalConfig (SelectionList.isSingle model.frames) model.foregroundColor
         ]
 
@@ -940,7 +929,7 @@ viewBorders resolution =
             (List.map vertical ns ++ List.map horizontal ns)
 
 
-viewRects : Grid -> Svg Msg
+viewRects : Grid -> Svg msg
 viewRects grid =
     let
         makeRect col row pixel =
@@ -1048,67 +1037,110 @@ usedColors frames =
             |> List.filter (\x -> x /= ColorUtil.transparent)
 
 
-type FrameType
-    = FrameNormal
-    | FrameSelected
-    | FramePreview
-
-
 viewFrames : Int -> Float -> ImagePaths -> Int -> Frames -> Html Msg
-viewFrames resolution frameSize images index frames =
+viewFrames resolution size images fps frames =
     Html.div
         [ HA.class "frame-list" ]
     <|
         List.concat
-            [ if SelectionList.isSingle frames then
-                []
-              else
-                [ viewFrame resolution frameSize FramePreview <| SelectionList.get index frames ]
-            , List.map (viewFrame resolution frameSize FrameNormal) <| Array.toList frames.previous
-            , [ viewFrame resolution frameSize FrameSelected frames.current ]
-            , List.map (viewFrame resolution frameSize FrameNormal) <| Array.toList frames.next
-            , [ viewAddFrame frameSize images ]
+            [ [ viewPreview resolution size fps frames ]
+            , List.map (viewFrame resolution size False) <| Array.toList frames.previous
+            , [ viewFrame resolution size True frames.current ]
+            , List.map (viewFrame resolution size False) <| Array.toList frames.next
+            , [ viewAddFrame size images ]
             ]
 
 
-viewFrame : Int -> Float -> FrameType -> Frame -> Html Msg
-viewFrame resolution frameSize frameType frame =
+viewPreview : Int -> Float -> Int -> Frames -> Html Msg
+viewPreview resolution size fps frames =
     let
-        attrs =
-            List.concat
-                [ [ HA.classList
-                        [ ( "frame", True )
-                        , ( "frame--normal", frameType == FrameNormal )
-                        , ( "frame--selected", frameType == FrameSelected )
-                        , ( "frame--preview", frameType == FramePreview )
-                        ]
-                  , sizeStyle frameSize
-                  ]
-                , if frameType == FramePreview then
-                    []
-                  else
-                    [ Events.onSingleOrDoubleClick (SelectFrame frame) (ShowFrameModal frame)
-                    , Events.prepareDoubleClick
-                    , HA.draggable "true"
-                    , Events.preventDefault "ondragenter"
-                    , Events.preventDefault "ondragover"
-                    , Events.preventDefault "ontouchmove"
-                    , Events.onDragStart <| SelectFrame frame
-                    , Events.onDrop <| DropOnFrame frame
-                    , Events.setDummyDragData
-                    ]
+        frameCount =
+            SelectionList.length frames
+
+        keyframeName =
+            "preview-" ++ toString fps ++ "-" ++ toString frameCount
+
+        keyframes =
+            String.concat
+                [ "@keyframes "
+                , keyframeName
+                , " {"
+                , "  from { left: 0; }"
+                , "  to { left: -"
+                , toString <| (toFloat frameCount) * size
+                , "px; }"
+                , "}"
                 ]
+
+        animation =
+            String.concat
+                [ keyframeName
+                , " "
+                , toString <| (toFloat frameCount) / (toFloat fps)
+                , "s steps("
+                , toString frameCount
+                , ") infinite"
+                ]
+
+        frameViews =
+            List.map (viewThumbnail resolution size []) <|
+                SelectionList.toList frames
     in
         Html.div
-            attrs
-            [ Svg.svg
-                [ SA.width <| toString frameSize
-                , SA.height <| toString frameSize
-                , SA.viewBox <| viewBox 0 0 (toFloat resolution) (toFloat resolution)
-                ]
-                [ viewRects frame.grid
-                ]
+            [ HA.class "frame frame-preview"
+            , sizeStyle size
             ]
+            [ Html.node "style"
+                []
+                [ Html.text keyframes ]
+            , Html.div
+                [ HA.class "frame-preview__inner"
+                , HA.style
+                    [ ( "width", toString (size * toFloat frameCount) ++ "px" )
+                    , ( "animation", animation )
+                    ]
+                ]
+                frameViews
+            ]
+
+
+viewFrame : Int -> Float -> Bool -> Frame -> Html Msg
+viewFrame resolution size selected frame =
+    let
+        attrs =
+            [ HA.classList
+                [ ( "frame", True )
+                , ( "frame--normal", not selected )
+                , ( "frame--selected", selected )
+                ]
+            , sizeStyle size
+            , Events.onSingleOrDoubleClick
+                (SelectFrame frame)
+                (ShowFrameModal frame)
+            , Events.prepareDoubleClick
+            , HA.draggable "true"
+            , Events.preventDefault "ondragenter"
+            , Events.preventDefault "ondragover"
+            , Events.preventDefault "ontouchmove"
+            , Events.onDragStart <| SelectFrame frame
+            , Events.onDrop <| DropOnFrame frame
+            , Events.setDummyDragData
+            ]
+    in
+        viewThumbnail resolution size attrs frame
+
+
+viewThumbnail : Int -> Float -> List (Html.Attribute msg) -> Frame -> Html msg
+viewThumbnail resolution size attrs frame =
+    Html.div
+        attrs
+        [ Svg.svg
+            [ SA.width <| toString size
+            , SA.height <| toString size
+            , SA.viewBox <| viewBox 0 0 (toFloat resolution) (toFloat resolution)
+            ]
+            [ viewRects frame.grid ]
+        ]
 
 
 viewAddFrame : Float -> ImagePaths -> Html Msg
@@ -1150,18 +1182,11 @@ svgIcon path =
 ---- PROGRAM ----
 
 
-tick : Model -> Sub Msg
-tick model =
-    Time.every
-        ((1000 / toFloat model.fps) * Time.millisecond)
-        (\_ -> Tick)
-
-
 main : Program ImagePaths Model Msg
 main =
     Html.programWithFlags
         { view = HL.lazy view
         , init = init
         , update = update
-        , subscriptions = tick
+        , subscriptions = \_ -> Sub.none
         }
