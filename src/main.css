@@ -155,16 +155,23 @@ body {
   cursor: pointer;
 }
 
-.frame--preview {
-  margin-right: 20px;
-}
-
 .frame--selected {
   border-color: #000;
 }
 
 .frame--plus img {
   padding-top: 15px;
+}
+
+.frame-preview {
+  margin-right: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+.frame-preview__inner {
+  display: flex;
+  position: relative;
 }
 
 /* https://www.w3schools.com/howto/howto_css_modals.asp */
