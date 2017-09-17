@@ -41,28 +41,24 @@ push item ((History size previous next) as history) =
         History size nextPrevious []
 
 
-undo : a -> History a -> ( Maybe a, History a )
+undo : a -> History a -> Maybe ( a, History a )
 undo item ((History size previous next) as history) =
     case previous of
         [] ->
-            ( Nothing, history )
+            Nothing
 
         x :: xs ->
-            ( Just x
-            , History size xs (item :: next)
-            )
+            Just ( x, History size xs (item :: next) )
 
 
-redo : a -> History a -> ( Maybe a, History a )
+redo : a -> History a -> Maybe ( a, History a )
 redo item ((History size previous next) as history) =
     case next of
         [] ->
-            ( Nothing, history )
+            Nothing
 
         x :: xs ->
-            ( Just x
-            , History size (item :: previous) xs
-            )
+            Just ( x, History size (item :: previous) xs )
 
 
 hasPrevious : History a -> Bool

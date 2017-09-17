@@ -63,13 +63,20 @@ type ModalConfig
     | SettingsModal Int
 
 
+type alias HistoryItem =
+    { frames : SelectionArray Frame
+    , fps : Int
+    , resolution : Int
+    }
+
+
 type alias Model =
     { mode : Mode
     , isMouseDown : Bool
     , previousMouseDown : Maybe ( Int, Int )
     , previousDistance : Maybe Float
     , foregroundColor : Color
-    , history : History Frames
+    , history : History HistoryItem
     , frames : Frames
     , frameSequence : Int
     , fps : Int
@@ -259,7 +266,7 @@ update msg model =
 
         ClearCanvas ->
             ( { model
-                | history = History.push model.frames model.history
+                | history = pushHistory model
                 , frames =
                     SelectionArray.updateCurrent
                         (\frame -> { frame | grid = emptyGrid model.resolution })
@@ -270,7 +277,7 @@ update msg model =
 
         AddFrame ->
             ( { model
-                | history = History.push model.frames model.history
+                | history = pushHistory model
                 , frames =
                     SelectionArray.append
                         { id = model.frameSequence, grid = emptyGrid model.resolution }
@@ -281,28 +288,10 @@ update msg model =
             )
 
         Undo ->
-            let
-                ( frames, history ) =
-                    History.undo model.frames model.history
-            in
-                ( { model
-                    | history = history
-                    , frames = Maybe.withDefault model.frames frames
-                  }
-                , Cmd.none
-                )
+            ( updateHistory History.undo model, Cmd.none )
 
         Redo ->
-            let
-                ( frames, history ) =
-                    History.redo model.frames model.history
-            in
-                ( { model
-                    | history = history
-                    , frames = Maybe.withDefault model.frames frames
-                  }
-                , Cmd.none
-                )
+            ( updateHistory History.redo model, Cmd.none )
 
         Download format ->
             let
@@ -340,7 +329,7 @@ update msg model =
 
         DeleteFrame frame ->
             ( { model
-                | history = History.push model.frames model.history
+                | history = pushHistory model
                 , frames =
                     SelectionArray.deleteCurrent <|
                         SelectionArray.select frame model.frames
@@ -355,7 +344,7 @@ update msg model =
                     { frame | id = model.frameSequence }
             in
                 ( { model
-                    | history = History.push model.frames model.history
+                    | history = pushHistory model
                     , frames =
                         SelectionArray.insertAfterCurrent copy <|
                             SelectionArray.select frame model.frames
@@ -461,7 +450,7 @@ update msg model =
 
         MouseDownOnContainer ->
             ( { model
-                | history = History.push model.frames model.history
+                | history = pushHistory model
                 , isMouseDown = True
               }
             , Cmd.none
@@ -478,7 +467,7 @@ update msg model =
 
         DropOnFrame frame ->
             ( { model
-                | history = History.push model.frames model.history
+                | history = pushHistory model
                 , frames = SelectionArray.swapCurrent frame model.frames
                 , isMouseDown = False
                 , previousMouseDown = Nothing
@@ -486,6 +475,26 @@ update msg model =
               }
             , Cmd.none
             )
+
+
+pushHistory : Model -> History HistoryItem
+pushHistory model =
+    History.push { frames = model.frames, fps = model.fps, resolution = model.resolution } model.history
+
+
+updateHistory : (HistoryItem -> History HistoryItem -> Maybe ( HistoryItem, History HistoryItem )) -> Model -> Model
+updateHistory move model =
+    case move { frames = model.frames, fps = model.fps, resolution = model.resolution } model.history of
+        Nothing ->
+            model
+
+        Just ( { frames, fps, resolution }, history ) ->
+            { model
+                | history = history
+                , frames = frames
+                , fps = fps
+                , resolution = resolution
+            }
 
 
 updateColorModal : Float -> Model -> Model
@@ -590,7 +599,7 @@ handleSinglePointerDown model pos =
             getPixelPos model.zoom model.offset pos
     in
         { model
-            | history = History.push model.frames model.history
+            | history = pushHistory model
             , frames = updateCurrentFrame pixelPos model
             , isMouseDown = True
             , previousMouseDown = Just pixelPos
