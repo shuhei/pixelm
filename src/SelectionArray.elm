@@ -1,6 +1,6 @@
-module SelectionList
+module SelectionArray
     exposing
-        ( SelectionList
+        ( SelectionArray
         , init
         , select
         , updateCurrent
@@ -18,14 +18,14 @@ module SelectionList
 import Array.Hamt as Array exposing (Array)
 
 
-type alias SelectionList a =
+type alias SelectionArray a =
     { previous : Array a
     , current : a
     , next : Array a
     }
 
 
-init : a -> SelectionList a
+init : a -> SelectionArray a
 init current =
     { previous = Array.empty
     , current = current
@@ -33,12 +33,12 @@ init current =
     }
 
 
-updateCurrent : (a -> a) -> SelectionList a -> SelectionList a
+updateCurrent : (a -> a) -> SelectionArray a -> SelectionArray a
 updateCurrent update frames =
     { frames | current = update frames.current }
 
 
-append : a -> SelectionList a -> SelectionList a
+append : a -> SelectionArray a -> SelectionArray a
 append frame frames =
     { previous = sandwich frames.previous frames.current frames.next
     , current = frame
@@ -65,7 +65,7 @@ sandwich xs y zs =
     Array.append (Array.push y xs) zs
 
 
-select : a -> SelectionList a -> SelectionList a
+select : a -> SelectionArray a -> SelectionArray a
 select item list =
     let
         items =
@@ -87,7 +87,7 @@ getLast array =
     Array.get (Array.length array - 1) array
 
 
-deleteCurrent : SelectionList a -> SelectionList a
+deleteCurrent : SelectionArray a -> SelectionArray a
 deleteCurrent list =
     case Array.get 0 list.next of
         Just nextCurrent ->
@@ -108,7 +108,7 @@ deleteCurrent list =
                     list
 
 
-insertAfterCurrent : a -> SelectionList a -> SelectionList a
+insertAfterCurrent : a -> SelectionArray a -> SelectionArray a
 insertAfterCurrent item list =
     { list
         | previous = Array.push list.current list.previous
@@ -116,17 +116,17 @@ insertAfterCurrent item list =
     }
 
 
-isSingle : SelectionList a -> Bool
+isSingle : SelectionArray a -> Bool
 isSingle list =
     Array.isEmpty list.previous && Array.isEmpty list.next
 
 
-length : SelectionList a -> Int
+length : SelectionArray a -> Int
 length list =
     Array.length list.previous + 1 + Array.length list.next
 
 
-get : Int -> SelectionList a -> a
+get : Int -> SelectionArray a -> a
 get index list =
     let
         i =
@@ -144,17 +144,17 @@ get index list =
         Maybe.withDefault list.current maybe
 
 
-toArray : SelectionList a -> Array a
+toArray : SelectionArray a -> Array a
 toArray list =
     sandwich list.previous list.current list.next
 
 
-toList : SelectionList a -> List a
+toList : SelectionArray a -> List a
 toList list =
     Array.toList <| toArray list
 
 
-swapCurrent : a -> SelectionList a -> SelectionList a
+swapCurrent : a -> SelectionArray a -> SelectionArray a
 swapCurrent item list =
     case partitionWithItem item (Array.toList list.previous) of
         Nothing ->

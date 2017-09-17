@@ -13,7 +13,7 @@ import Array2 exposing (Array2)
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
 import Events
-import SelectionList exposing (SelectionList)
+import SelectionArray exposing (SelectionArray)
 import History exposing (History)
 
 
@@ -38,7 +38,7 @@ type alias Frame =
 
 
 type alias Frames =
-    SelectionList Frame
+    SelectionArray Frame
 
 
 type alias ImagePaths =
@@ -144,7 +144,7 @@ init flags =
             , foregroundColor = Color.black
             , history = History.initialize 50
             , frames =
-                SelectionList.init <|
+                SelectionArray.init <|
                     Frame initialFrameSequence (emptyGrid initialResolution)
             , frameSequence = initialFrameSequence + 1
             , fps = 5
@@ -261,7 +261,7 @@ update msg model =
             ( { model
                 | history = History.push model.frames model.history
                 , frames =
-                    SelectionList.updateCurrent
+                    SelectionArray.updateCurrent
                         (\frame -> { frame | grid = emptyGrid model.resolution })
                         model.frames
               }
@@ -272,7 +272,7 @@ update msg model =
             ( { model
                 | history = History.push model.frames model.history
                 , frames =
-                    SelectionList.append
+                    SelectionArray.append
                         { id = model.frameSequence, grid = emptyGrid model.resolution }
                         model.frames
                 , frameSequence = model.frameSequence + 1
@@ -309,7 +309,7 @@ update msg model =
                 data =
                     { grids =
                         List.map (Array2.toList2 << Array2.map Color.toRgb << .grid) <|
-                            SelectionList.toList model.frames
+                            SelectionArray.toList model.frames
                     , format =
                         case format of
                             SVGFormat ->
@@ -333,7 +333,7 @@ update msg model =
 
         SelectFrame frame ->
             ( { model
-                | frames = SelectionList.select frame model.frames
+                | frames = SelectionArray.select frame model.frames
               }
             , Cmd.none
             )
@@ -342,8 +342,8 @@ update msg model =
             ( { model
                 | history = History.push model.frames model.history
                 , frames =
-                    SelectionList.deleteCurrent <|
-                        SelectionList.select frame model.frames
+                    SelectionArray.deleteCurrent <|
+                        SelectionArray.select frame model.frames
                 , modalConfig = NoModal
               }
             , Cmd.none
@@ -357,8 +357,8 @@ update msg model =
                 ( { model
                     | history = History.push model.frames model.history
                     , frames =
-                        SelectionList.insertAfterCurrent copy <|
-                            SelectionList.select frame model.frames
+                        SelectionArray.insertAfterCurrent copy <|
+                            SelectionArray.select frame model.frames
                     , frameSequence = model.frameSequence + 1
                     , modalConfig = NoModal
                   }
@@ -479,7 +479,7 @@ update msg model =
         DropOnFrame frame ->
             ( { model
                 | history = History.push model.frames model.history
-                , frames = SelectionList.swapCurrent frame model.frames
+                , frames = SelectionArray.swapCurrent frame model.frames
                 , isMouseDown = False
                 , previousMouseDown = Nothing
                 , previousDistance = Nothing
@@ -700,9 +700,9 @@ view model =
         [ viewGrid model.resolution model.canvasSize model.zoom model.offset model.mode model.frames.current.grid
         , viewMenus model.mode model.images
         , viewCurrentColor model.foregroundColor <|
-            usedColors (Array.toList <| SelectionList.toArray model.frames)
+            usedColors (Array.toList <| SelectionArray.toArray model.frames)
         , viewFrames model.resolution model.frameSize model.images model.fps model.frames
-        , viewModal model.modalConfig (SelectionList.isSingle model.frames) model.foregroundColor
+        , viewModal model.modalConfig (SelectionArray.isSingle model.frames) model.foregroundColor
         ]
 
 
@@ -1055,7 +1055,7 @@ viewPreview : Int -> Float -> Int -> Frames -> Html Msg
 viewPreview resolution size fps frames =
     let
         frameCount =
-            SelectionList.length frames
+            SelectionArray.length frames
 
         keyframeName =
             "preview-" ++ toString fps ++ "-" ++ toString frameCount
@@ -1084,7 +1084,7 @@ viewPreview resolution size fps frames =
 
         frameViews =
             List.map (viewThumbnail resolution size []) <|
-                SelectionList.toList frames
+                SelectionArray.toList frames
     in
         Html.div
             [ HA.class "frame frame-preview"
