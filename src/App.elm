@@ -60,7 +60,7 @@ type ModalConfig
     | FrameModal Frame
     | DownloadModal
     | ColorModal Float
-    | SettingsModal Int
+    | SettingsModal Int Int
 
 
 type alias HistoryItem =
@@ -196,7 +196,8 @@ type Msg
     | ShowColorModal
     | ShowSettingsModal
     | UpdateFps Int
-    | UpdateSettings Int
+    | UpdateResolution Int
+    | SaveSettings Int Int
     | CloseModal
     | MouseDownOnCanvas ( Float, Float )
     | MouseMoveOnCanvas ( Float, Float )
@@ -372,19 +373,38 @@ update msg model =
             )
 
         ShowSettingsModal ->
-            ( { model | modalConfig = SettingsModal model.fps }
+            ( { model | modalConfig = SettingsModal model.fps model.resolution }
             , Cmd.none
             )
 
         UpdateFps fps ->
-            ( updateSettingsModal fps model
+            ( updateSettingsModal (\_ resolution -> SettingsModal fps resolution) model
             , Cmd.none
             )
 
-        UpdateSettings fps ->
-            ( { model | fps = fps, modalConfig = NoModal }
+        UpdateResolution resolution ->
+            ( updateSettingsModal (\fps _ -> SettingsModal fps resolution) model
             , Cmd.none
             )
+
+        SaveSettings fps resolution ->
+            let
+                resizeFrame frame =
+                    { frame
+                        | grid = Array2.resize resolution resolution ColorUtil.transparent frame.grid
+                    }
+            in
+                ( resetZoom
+                    (model.resolution /= resolution)
+                    { model
+                        | fps = fps
+                        , resolution = resolution
+                        , modalConfig = NoModal
+                        , history = pushHistory model
+                        , frames = SelectionArray.map resizeFrame model.frames
+                    }
+                , Cmd.none
+                )
 
         CloseModal ->
             ( { model | modalConfig = NoModal }
@@ -489,12 +509,14 @@ updateHistory move model =
             model
 
         Just ( { frames, fps, resolution }, history ) ->
-            { model
-                | history = history
-                , frames = frames
-                , fps = fps
-                , resolution = resolution
-            }
+            resetZoom
+                (model.resolution /= resolution)
+                { model
+                    | history = history
+                    , frames = frames
+                    , fps = fps
+                    , resolution = resolution
+                }
 
 
 updateColorModal : Float -> Model -> Model
@@ -507,14 +529,25 @@ updateColorModal hue model =
             model
 
 
-updateSettingsModal : Int -> Model -> Model
-updateSettingsModal fps model =
+updateSettingsModal : (Int -> Int -> ModalConfig) -> Model -> Model
+updateSettingsModal makeConfig model =
     case model.modalConfig of
-        SettingsModal _ ->
-            { model | modalConfig = SettingsModal fps }
+        SettingsModal fps resolution ->
+            { model | modalConfig = makeConfig fps resolution }
 
         _ ->
             model
+
+
+resetZoom : Bool -> Model -> Model
+resetZoom shouldReset model =
+    if shouldReset then
+        { model
+            | zoom = model.canvasSize / toFloat model.resolution
+            , offset = ( 0, 0 )
+        }
+    else
+        model
 
 
 euclidDistance : ( Float, Float ) -> ( Float, Float ) -> Float
@@ -709,7 +742,7 @@ view model =
         [ viewGrid model.resolution model.canvasSize model.zoom model.offset model.mode model.frames.current.grid
         , viewMenus model.mode model.images (History.hasPrevious model.history) (History.hasNext model.history)
         , viewCurrentColor model.foregroundColor <|
-            usedColors (Array.toList <| SelectionArray.toArray model.frames)
+            usedColors (SelectionArray.toList model.frames)
         , viewFrames model.resolution model.frameSize model.images model.fps model.frames
         , viewModal model.modalConfig (SelectionArray.isSingle model.frames) model.foregroundColor
         ]
@@ -775,13 +808,18 @@ viewModal config isSingleFrame foregroundColor =
                 ColorModal hue ->
                     List.append (viewColorModal hue foregroundColor) [ closeButton ]
 
-                SettingsModal fps ->
+                SettingsModal fps resolution ->
                     [ Html.div
+                        [ HA.class "settings-radios" ]
+                        [ radioButton "resolution" (resolution == 16) "16x16" (UpdateResolution 16)
+                        , radioButton "resolution" (resolution == 32) "32x32" (UpdateResolution 32)
+                        ]
+                    , Html.div
                         [ HA.class "settings-radios" ]
                         [ radioButton "fps" (fps == 5) "5 FPS" (UpdateFps 5)
                         , radioButton "fps" (fps == 10) "10 FPS" (UpdateFps 10)
                         ]
-                    , viewModalButton "primary" "Save" <| UpdateSettings fps
+                    , viewModalButton "primary" "Save" <| SaveSettings fps resolution
                     , closeButton
                     ]
     in

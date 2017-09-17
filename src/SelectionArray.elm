@@ -10,9 +10,9 @@ module SelectionArray
         , append
         , isSingle
         , get
-        , toArray
         , toList
         , length
+        , map
         )
 
 import Array.Hamt as Array exposing (Array)
@@ -140,14 +140,10 @@ get index array =
         Maybe.withDefault array.current maybe
 
 
-toArray : SelectionArray a -> Array a
-toArray array =
-    sandwich array.previous array.current array.next
-
-
 toList : SelectionArray a -> List a
 toList array =
-    Array.toList <| toArray array
+    Array.toList <|
+        sandwich array.previous array.current array.next
 
 
 swapCurrent : a -> SelectionArray a -> SelectionArray a
@@ -169,3 +165,11 @@ swapCurrent item array =
                 | previous = Array.fromList xs
                 , next = sandwich (Array.fromList ys) item array.next
             }
+
+
+map : (a -> b) -> SelectionArray a -> SelectionArray b
+map f array =
+    { previous = Array.map f array.previous
+    , current = f array.current
+    , next = Array.map f array.next
+    }

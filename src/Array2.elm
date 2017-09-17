@@ -16,13 +16,19 @@ get col row =
 set : Int -> Int -> a -> Array2 a -> Array2 a
 set col row newItem =
     let
-        update c r oldItem =
-            if col == c && row == r then
+        update c oldItem =
+            if col == c then
                 newItem
             else
                 oldItem
+
+        mapRow r cols =
+            if r == row then
+                Array.indexedMap update cols
+            else
+                cols
     in
-        indexedMap update
+        Array.indexedMap mapRow
 
 
 initialize : Int -> Int -> (Int -> Int -> a) -> Array2 a
@@ -123,3 +129,13 @@ fill x y to arr2 =
     in
         Maybe.map start (get x y arr2)
             |> Maybe.withDefault arr2
+
+
+resize : Int -> Int -> a -> Array2 a -> Array2 a
+resize cols rows default arr2 =
+    let
+        getItem x y =
+            get x y arr2
+                |> Maybe.withDefault default
+    in
+        initialize cols rows getItem
