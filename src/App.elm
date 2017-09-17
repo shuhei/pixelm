@@ -698,7 +698,7 @@ view model =
         , HE.onMouseUp <| MouseUpOnContainer
         ]
         [ viewGrid model.resolution model.canvasSize model.zoom model.offset model.mode model.frames.current.grid
-        , viewMenus model.mode model.images
+        , viewMenus model.mode model.images (History.hasPrevious model.history) (History.hasNext model.history)
         , viewCurrentColor model.foregroundColor <|
             usedColors (Array.toList <| SelectionArray.toArray model.frames)
         , viewFrames model.resolution model.frameSize model.images model.fps model.frames
@@ -948,26 +948,32 @@ viewRects grid =
         Svg.g [] rects
 
 
-viewMenu : Bool -> Msg -> String -> Html Msg -> Html Msg
-viewMenu selected msg label content =
+viewMenu : Bool -> Bool -> Msg -> String -> Html Msg -> Html Msg
+viewMenu selected disabled msg label content =
     Html.a
         [ HA.classList
             [ ( "mode", True )
             , ( "mode--selected", selected )
+            , ( "mode--disabled", disabled )
             ]
         , HA.href "#"
         , HA.title label
-        , HE.onClick msg
+        , HE.onClick <|
+            if disabled then
+                NoOp
+            else
+                msg
         , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
+        , Events.onWithStopAndPrevent "mouseup" <| Json.succeed NoOp
         ]
         [ content ]
 
 
-viewMenus : Mode -> ImagePaths -> Html Msg
-viewMenus selectedMode images =
+viewMenus : Mode -> ImagePaths -> Bool -> Bool -> Html Msg
+viewMenus selectedMode images withUndo withRedo =
     let
         modeMenu mode content =
-            viewMenu (mode == selectedMode) (SelectMode mode) content
+            viewMenu (mode == selectedMode) False (SelectMode mode) content
     in
         Html.div [ HA.class "menu" ]
             [ Html.div
@@ -976,14 +982,14 @@ viewMenus selectedMode images =
                 , modeMenu Eraser "Eraser" <| svgIcon images.eraser
                 , modeMenu Bucket "Bucket" <| svgIcon images.bucket
                 , modeMenu Move "Move" <| svgIcon images.move
-                , viewMenu False ClearCanvas "Clear" <| svgIcon images.trash
-                , viewMenu False ShowSettingsModal "Settings" <| svgIcon images.settings
-                , viewMenu False ShowDownloadModal "Download" <| svgIcon images.download
+                , viewMenu False False ClearCanvas "Clear" <| svgIcon images.trash
+                , viewMenu False False ShowSettingsModal "Settings" <| svgIcon images.settings
+                , viewMenu False False ShowDownloadModal "Download" <| svgIcon images.download
                 ]
             , Html.div
                 []
-                [ viewMenu False Undo "Undo" <| svgIcon images.undo
-                , viewMenu False Redo "Redo" <| svgIcon images.redo
+                [ viewMenu False (not withUndo) Undo "Undo" <| svgIcon images.undo
+                , viewMenu False (not withRedo) Redo "Redo" <| svgIcon images.redo
                 ]
             ]
 

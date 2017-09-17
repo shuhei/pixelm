@@ -1,4 +1,13 @@
-module History exposing (History, initialize, push, undo, redo)
+module History
+    exposing
+        ( History
+        , initialize
+        , push
+        , undo
+        , redo
+        , hasPrevious
+        , hasNext
+        )
 
 
 type History a
@@ -54,3 +63,13 @@ redo item ((History size previous next) as history) =
             ( Just x
             , History size (item :: previous) xs
             )
+
+
+hasPrevious : History a -> Bool
+hasPrevious (History _ previous _) =
+    not <| List.isEmpty previous
+
+
+hasNext : History a -> Bool
+hasNext (History _ _ next) =
+    not <| List.isEmpty next

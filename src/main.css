@@ -119,7 +119,16 @@ body {
 
 .mode:hover,
 .mode--selected {
-  border: 2px solid #ccc;
+  border-color: #ccc;
+}
+
+.mode--disabled {
+  filter: grayscale(1);
+  cursor: default;
+}
+
+.mode--disabled:hover {
+  border-color: transparent;
 }
 
 .mode img {
