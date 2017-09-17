@@ -1043,7 +1043,10 @@ viewFrames resolution size images fps frames =
         [ HA.class "frame-list" ]
     <|
         List.concat
-            [ [ viewPreview resolution size fps frames ]
+            [ if SelectionArray.length frames > 1 then
+                [ viewPreview resolution size fps frames ]
+              else
+                []
             , List.map (viewFrame resolution size False) <| Array.toList frames.previous
             , [ viewFrame resolution size True frames.current ]
             , List.map (viewFrame resolution size False) <| Array.toList frames.next

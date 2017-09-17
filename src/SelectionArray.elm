@@ -34,21 +34,21 @@ init current =
 
 
 updateCurrent : (a -> a) -> SelectionArray a -> SelectionArray a
-updateCurrent update frames =
-    { frames | current = update frames.current }
+updateCurrent update array =
+    { array | current = update array.current }
 
 
 append : a -> SelectionArray a -> SelectionArray a
-append frame frames =
-    { previous = sandwich frames.previous frames.current frames.next
-    , current = frame
+append item array =
+    { previous = sandwich array.previous array.current array.next
+    , current = item
     , next = Array.empty
     }
 
 
 partitionWithItem : a -> List a -> Maybe ( List a, List a )
-partitionWithItem item list =
-    case list of
+partitionWithItem item items =
+    case items of
         [] ->
             Nothing
 
@@ -66,20 +66,16 @@ sandwich xs y zs =
 
 
 select : a -> SelectionArray a -> SelectionArray a
-select item list =
-    let
-        items =
-            Array.toList <| toArray list
-    in
-        case partitionWithItem item items of
-            Nothing ->
-                list
+select item array =
+    case partitionWithItem item (toList array) of
+        Nothing ->
+            array
 
-            Just ( xs, ys ) ->
-                { previous = Array.fromList xs
-                , current = item
-                , next = Array.fromList ys
-                }
+        Just ( xs, ys ) ->
+            { previous = Array.fromList xs
+            , current = item
+            , next = Array.fromList ys
+            }
 
 
 getLast : Array a -> Maybe a
@@ -88,88 +84,88 @@ getLast array =
 
 
 deleteCurrent : SelectionArray a -> SelectionArray a
-deleteCurrent list =
-    case Array.get 0 list.next of
+deleteCurrent array =
+    case Array.get 0 array.next of
         Just nextCurrent ->
-            { list
+            { array
                 | current = nextCurrent
-                , next = Array.slice 1 (Array.length list.next) list.next
+                , next = Array.slice 1 (Array.length array.next) array.next
             }
 
         Nothing ->
-            case getLast list.previous of
+            case getLast array.previous of
                 Just nextCurrent ->
-                    { list
+                    { array
                         | current = nextCurrent
-                        , previous = Array.slice 0 -1 list.previous
+                        , previous = Array.slice 0 -1 array.previous
                     }
 
                 Nothing ->
-                    list
+                    array
 
 
 insertAfterCurrent : a -> SelectionArray a -> SelectionArray a
-insertAfterCurrent item list =
-    { list
-        | previous = Array.push list.current list.previous
+insertAfterCurrent item array =
+    { array
+        | previous = Array.push array.current array.previous
         , current = item
     }
 
 
 isSingle : SelectionArray a -> Bool
-isSingle list =
-    Array.isEmpty list.previous && Array.isEmpty list.next
+isSingle array =
+    Array.isEmpty array.previous && Array.isEmpty array.next
 
 
 length : SelectionArray a -> Int
-length list =
-    Array.length list.previous + 1 + Array.length list.next
+length array =
+    Array.length array.previous + 1 + Array.length array.next
 
 
 get : Int -> SelectionArray a -> a
-get index list =
+get index array =
     let
         i =
-            index % length list
+            index % length array
 
         prevSize =
-            Array.length list.previous
+            Array.length array.previous
 
         maybe =
             if i < prevSize then
-                Array.get i list.previous
+                Array.get i array.previous
             else
-                Array.get (i - 1 - prevSize) list.next
+                Array.get (i - 1 - prevSize) array.next
     in
-        Maybe.withDefault list.current maybe
+        Maybe.withDefault array.current maybe
 
 
 toArray : SelectionArray a -> Array a
-toArray list =
-    sandwich list.previous list.current list.next
+toArray array =
+    sandwich array.previous array.current array.next
 
 
 toList : SelectionArray a -> List a
-toList list =
-    Array.toList <| toArray list
+toList array =
+    Array.toList <| toArray array
 
 
 swapCurrent : a -> SelectionArray a -> SelectionArray a
-swapCurrent item list =
-    case partitionWithItem item (Array.toList list.previous) of
+swapCurrent item array =
+    case partitionWithItem item (Array.toList array.previous) of
         Nothing ->
-            case partitionWithItem item (Array.toList list.next) of
+            case partitionWithItem item (Array.toList array.next) of
                 Nothing ->
-                    list
+                    array
 
                 Just ( xs, ys ) ->
-                    { list
-                        | previous = sandwich list.previous item (Array.fromList xs)
+                    { array
+                        | previous = sandwich array.previous item (Array.fromList xs)
                         , next = Array.fromList ys
                     }
 
         Just ( xs, ys ) ->
-            { list
+            { array
                 | previous = Array.fromList xs
-                , next = sandwich (Array.fromList ys) item list.next
+                , next = sandwich (Array.fromList ys) item array.next
             }
