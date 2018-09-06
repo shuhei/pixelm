@@ -15,7 +15,7 @@ module SelectionArray
         , map
         )
 
-import Array.Hamt as Array exposing (Array)
+import Array exposing (Array)
 
 
 type alias SelectionArray a =
@@ -126,7 +126,7 @@ get : Int -> SelectionArray a -> a
 get index array =
     let
         i =
-            index % length array
+            modBy (length array) index
 
         prevSize =
             Array.length array.previous

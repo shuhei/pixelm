@@ -1,7 +1,7 @@
 module Array2 exposing (..)
 
-import Array.Hamt as Array exposing (Array)
-import Set
+import Array exposing (Array)
+import Set exposing (Set)
 
 
 type alias Array2 a =
@@ -105,25 +105,6 @@ move dx dy default arr2 =
 fill : Int -> Int -> a -> Array2 a -> Array2 a
 fill x y to arr2 =
     let
-        neighbors x y =
-            [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
-
-        fillRegion a ( x, y ) ( visited, arr2 ) =
-            case get x y arr2 of
-                Nothing ->
-                    ( visited, arr2 )
-
-                Just c ->
-                    if Set.member ( x, y ) visited then
-                        ( visited, arr2 )
-                    else if c == a then
-                        List.foldl
-                            (fillRegion a)
-                            ( Set.insert ( x, y ) visited, set x y to arr2 )
-                            (neighbors x y)
-                    else
-                        ( Set.insert ( x, y ) visited, arr2 )
-
         start a =
             fillRegion a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second
     in
@@ -139,3 +120,26 @@ resize cols rows default arr2 =
                 |> Maybe.withDefault default
     in
         initialize cols rows getItem
+
+
+neighbors : Int -> Int -> List ( Int, Int )
+neighbors x y =
+    [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
+
+
+fillRegion : a -> a -> ( Int, Int ) -> Set ( Int, Int ) -> Set ( Int, Int )
+fillRegion to a ( x, y ) ( visited, arr2 ) =
+    case get x y arr2 of
+        Nothing ->
+            ( visited, arr2 )
+
+        Just c ->
+            if Set.member ( x, y ) visited then
+                ( visited, arr2 )
+            else if c == a then
+                List.foldl
+                    (fillRegion to a)
+                    ( Set.insert ( x, y ) visited, set x y to arr2 )
+                    (neighbors x y)
+            else
+                ( Set.insert ( x, y ) visited, arr2 )

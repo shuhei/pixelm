@@ -1,6 +1,6 @@
 port module App exposing (..)
 
-import Array.Hamt as Array exposing (Array)
+import Array exposing (Array)
 import Dict
 import Html exposing (Html)
 import Html.Attributes as HA
