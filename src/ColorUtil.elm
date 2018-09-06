@@ -34,13 +34,13 @@ toColorString color =
             Color.toRgb color
     in
         "rgba("
-            ++ toString red
+            ++ String.fromInt red
             ++ ","
-            ++ toString green
+            ++ String.fromInt green
             ++ ","
-            ++ toString blue
+            ++ String.fromInt blue
             ++ ","
-            ++ toString alpha
+            ++ String.fromFloat alpha
             ++ ")"
 
 
@@ -56,10 +56,10 @@ modFloat x y =
 {-| <http://www.rapidtables.com/convert/color/hsv-to-rgb.htm>
 -}
 hsv : Float -> Float -> Float -> Float -> Color
-hsv hue saturation value alpha =
+hsv hueRadian saturation value alpha =
     let
         h =
-            modFloat (hue / pi * 180) 360
+            modFloat (hueRadian / pi * 180) 360
 
         c =
             value * saturation
@@ -70,11 +70,11 @@ hsv hue saturation value alpha =
         m =
             value - c
 
-        normalize m x =
-            floor ((m + x) * 255)
+        normalize color =
+            floor ((m + color) * 255)
 
         rgb r g b =
-            Color.rgba (normalize m r) (normalize m g) (normalize m b) alpha
+            Color.rgba (normalize r) (normalize g) (normalize b) alpha
     in
         if 0 <= h && h < 60 then
             rgb c x 0

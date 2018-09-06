@@ -106,7 +106,7 @@ fill : Int -> Int -> a -> Array2 a -> Array2 a
 fill x y to arr2 =
     let
         start a =
-            fillRegion a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second
+            fillRegion to a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second
     in
         Maybe.map start (get x y arr2)
             |> Maybe.withDefault arr2
@@ -127,7 +127,7 @@ neighbors x y =
     [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
 
 
-fillRegion : a -> a -> ( Int, Int ) -> Set ( Int, Int ) -> Set ( Int, Int )
+fillRegion : a -> a -> ( Int, Int ) -> (Set ( Int, Int ), Array2 a) -> (Set ( Int, Int ), Array2 a)
 fillRegion to a ( x, y ) ( visited, arr2 ) =
     case get x y arr2 of
         Nothing ->
