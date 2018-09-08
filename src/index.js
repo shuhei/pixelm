@@ -8,17 +8,20 @@ import registerServiceWorker from './registerServiceWorker';
 
 var root = document.getElementById('root');
 
-var app = Elm.App.embed(root, {
-  pencil: require('./images/pencil.svg'),
-  eraser: require('./images/eraser.svg'),
-  bucket: require('./images/bucket.svg'),
-  move: require('./images/move.svg'),
-  trash: require('./images/trash.svg'),
-  plus : require('./images/plus.svg'),
-  undo: require('./images/undo.svg'),
-  redo: require('./images/redo.svg'),
-  download: require('./images/download.svg'),
-  settings: require('./images/settings.svg')
+var app = Elm.Elm.App.init({
+  node: root,
+  flags: {
+    pencil: require('./images/pencil.svg'),
+    eraser: require('./images/eraser.svg'),
+    bucket: require('./images/bucket.svg'),
+    move: require('./images/move.svg'),
+    trash: require('./images/trash.svg'),
+    plus : require('./images/plus.svg'),
+    undo: require('./images/undo.svg'),
+    redo: require('./images/redo.svg'),
+    download: require('./images/download.svg'),
+    settings: require('./images/settings.svg')
+  }
 });
 app.ports.download.subscribe(function (data) {
   switch (data.format) {
