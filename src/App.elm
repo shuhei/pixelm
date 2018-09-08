@@ -2,6 +2,7 @@ port module App exposing (main)
 
 import Array exposing (Array)
 import Array2 exposing (Array2)
+import Browser
 import Color exposing (Color)
 import ColorUtil exposing (RGBA)
 import Dict
@@ -867,7 +868,7 @@ viewColorModal selectedHue selectedColor =
             UpdateSV (x / 240) (1 - y / 240)
 
         toPx num =
-            String.fromInt num ++ "px"
+            String.fromFloat num ++ "px"
     in
     [ Html.div
         [ HA.class "color-selector__row" ]
@@ -876,7 +877,7 @@ viewColorModal selectedHue selectedColor =
         [ HA.class "color-picker" ]
         [ Html.div
             [ HA.class "color-picker__color"
-            , HA.style [ ( "background-color", color ) ]
+            , HA.style "background-color" color
             , HE.on "click" <| Events.decodeMouseEvent pickSV
             ]
             [ Html.div
@@ -885,10 +886,8 @@ viewColorModal selectedHue selectedColor =
                     [ HA.class "color-picker__value" ]
                     [ Html.div
                         [ HA.class "color-picker__sv-pointer"
-                        , HA.style
-                            [ ( "left", toPx <| saturation * 240 - 5 )
-                            , ( "top", toPx <| (1 - value) * 240 - 5 )
-                            ]
+                        , HA.style "left" (toPx <| saturation * 240 - 5)
+                        , HA.style "top" (toPx <| (1 - value) * 240 - 5)
                         ]
                         []
                     ]
@@ -900,8 +899,7 @@ viewColorModal selectedHue selectedColor =
             ]
             [ Html.div
                 [ HA.class "color-picker__hue-pointer"
-                , HA.style
-                    [ ( "top", toPx <| 240 * selectedHue / (2 * pi) - 3 ) ]
+                , HA.style "top" (toPx <| 240 * selectedHue / (2 * pi) - 3)
                 ]
                 []
             ]
@@ -924,16 +922,14 @@ viewGrid resolution canvasSize zoom ( offsetX, offsetY ) mode grid =
     in
     Html.div
         [ HA.class "pixel-grid-container"
-        , sizeStyle canvasSize
-        , HA.style
-            [ ( "cursor"
-              , if mode == Move then
-                    "move"
+        , widthStyle canvasSize
+        , heightStyle canvasSize
+        , HA.style "cursor" <|
+            if mode == Move then
+                "move"
 
-                else
-                    "pointer"
-              )
-            ]
+            else
+                "pointer"
         , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
         , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
         , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
@@ -944,8 +940,8 @@ viewGrid resolution canvasSize zoom ( offsetX, offsetY ) mode grid =
         ]
         [ Svg.svg
             [ SA.class "pixel-grid"
-            , SA.width <| String.fromInt canvasSize
-            , SA.height <| String.fromInt canvasSize
+            , SA.width <| String.fromFloat canvasSize
+            , SA.height <| String.fromFloat canvasSize
             , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
             , SA.shapeRendering "crispEdges"
             ]
@@ -1081,10 +1077,8 @@ viewColor attrs tagger selected color =
         attributes =
             List.append
                 [ HA.class "color-selector__color"
-                , HA.style
-                    [ ( "background-color", ColorUtil.toColorString color )
-                    , ( "border-color", ColorUtil.toColorString borderColor )
-                    ]
+                , HA.style "background-color" <| ColorUtil.toColorString color
+                , HA.style "border-color" <| ColorUtil.toColorString borderColor
                 , HE.onClick <| tagger color
                 ]
                 attrs
@@ -1158,17 +1152,16 @@ viewPreview resolution size fps frames =
     in
     Html.div
         [ HA.class "frame frame-preview"
-        , sizeStyle size
+        , widthStyle size
+        , heightStyle size
         ]
         [ Html.node "style"
             []
             [ Html.text keyframes ]
         , Html.div
             [ HA.class "frame-preview__inner"
-            , HA.style
-                [ ( "width", String.fromFloat (size * toFloat frameCount) ++ "px" )
-                , ( "animation", animation )
-                ]
+            , widthStyle (size * toFloat frameCount)
+            , HA.style "animation" animation
             ]
             frameViews
         ]
@@ -1183,7 +1176,8 @@ viewFrame resolution size selected frame =
                 , ( "frame--normal", not selected )
                 , ( "frame--selected", selected )
                 ]
-            , sizeStyle size
+            , widthStyle size
+            , heightStyle size
             , Events.onSingleOrDoubleClick
                 (SelectFrame frame)
                 (ShowFrameModal frame)
@@ -1217,18 +1211,21 @@ viewAddFrame : Float -> ImagePaths -> Html Msg
 viewAddFrame frameSize images =
     Html.div
         [ HA.class "frame frame--plus"
-        , sizeStyle frameSize
         , HE.onClick AddFrame
+        , widthStyle frameSize
+        , heightStyle frameSize
         ]
         [ svgIcon images.plus ]
 
 
-sizeStyle : Float -> Html.Attribute msg
-sizeStyle size =
-    HA.style
-        [ ( "width", String.fromFloat size ++ "px" )
-        , ( "height", String.fromFloat size ++ "px" )
-        ]
+widthStyle : Float -> Html.Attribute msg
+widthStyle size =
+    HA.style "width" <| String.fromFloat size ++ "px"
+
+
+heightStyle : Float -> Html.Attribute msg
+heightStyle size =
+    HA.style "height" <| String.fromFloat size ++ "px"
 
 
 faIcon : String -> Html msg
@@ -1254,7 +1251,7 @@ svgIcon path =
 
 main : Program ImagePaths Model Msg
 main =
-    Html.programWithFlags
+    Browser.element
         { view = HL.lazy view
         , init = init
         , update = update
