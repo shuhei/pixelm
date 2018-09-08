@@ -1,22 +1,21 @@
-module Events
-    exposing
-        ( decodeMouseEvent
-        , decodeTouchEvent
-        , decodeWheelEvent
-        , onWithStopAndPrevent
-        , onDragStart
-        , onDrop
-        , preventDefault
-        , stopPropagation
-        , prepareDoubleClick
-        , onSingleOrDoubleClick
-        , setDummyDragData
-        )
+module Events exposing
+    ( decodeMouseEvent
+    , decodeTouchEvent
+    , decodeWheelEvent
+    , onDragStart
+    , onDrop
+    , onSingleOrDoubleClick
+    , onWithStopAndPrevent
+    , prepareDoubleClick
+    , preventDefault
+    , setDummyDragData
+    , stopPropagation
+    )
 
-import Json.Decode as Json
 import Html
-import Html.Events as HE
 import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode as Json
 import String
 import Tuple
 
@@ -49,8 +48,8 @@ decodeListLike decoder =
                 |> List.map decodeIndex
                 |> List.foldr (Json.map2 (::)) (Json.succeed [])
     in
-        Json.field "length" Json.int
-            |> Json.andThen list
+    Json.field "length" Json.int
+        |> Json.andThen list
 
 
 decodeTouchEvent : (List ( Float, Float ) -> msg) -> Json.Decoder msg
@@ -65,8 +64,8 @@ decodeTouchEvent tagger =
         minusPositions positions base =
             List.map (\pos -> minusPos pos base) positions
     in
-        Json.map tagger <|
-            Json.map2 minusPositions decodeTouches decodeTarget
+    Json.map tagger <|
+        Json.map2 minusPositions decodeTouches decodeTarget
 
 
 decodeOffset : Json.Decoder ( Float, Float )
@@ -89,7 +88,7 @@ decodeRelativePos =
         decodeTarget =
             Json.field "currentTarget" decodeOffset
     in
-        Json.map2 minusPos decodeClientPos decodeTarget
+    Json.map2 minusPos decodeClientPos decodeTarget
 
 
 decodeMouseEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
@@ -103,7 +102,7 @@ withFlag bool decoder =
         wrap msg =
             ( msg, bool )
     in
-        Json.map wrap decoder
+    Json.map wrap decoder
 
 
 stopAndPrevent : Bool -> Bool -> Json.Decoder msg -> CustomDecoder msg
@@ -115,7 +114,7 @@ stopAndPrevent stop prevent decoder =
             , preventDefault = prevent
             }
     in
-        Json.map wrap decoder
+    Json.map wrap decoder
 
 
 onWithStopAndPrevent : String -> Json.Decoder msg -> Html.Attribute msg
@@ -175,11 +174,12 @@ onSingleOrDoubleClick singleMessage doubleMessage =
         chooseMessage isDoubleClick =
             if isDoubleClick then
                 doubleMessage
+
             else
                 singleMessage
     in
-        HE.preventDefaultOn "click"
-            (withFlag True <| Json.map chooseMessage decodeClicked)
+    HE.preventDefaultOn "click"
+        (withFlag True <| Json.map chooseMessage decodeClicked)
 
 
 decodeClicked : Json.Decoder Bool
@@ -189,10 +189,10 @@ decodeClicked =
             Json.map ((==) "true") <|
                 Json.at [ "currentTarget", "dataset", "clicked" ] Json.string
     in
-        Json.oneOf
-            [ decodeData
-            , Json.succeed False
-            ]
+    Json.oneOf
+        [ decodeData
+        , Json.succeed False
+        ]
 
 
 {-| Set dummy data to `event.dataTransfer` on dragstart event for cross-browser

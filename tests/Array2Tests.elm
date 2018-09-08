@@ -1,8 +1,8 @@
-module Array2Tests exposing (..)
+module Array2Tests exposing (all)
 
-import Test exposing (..)
-import Expect
 import Array2 exposing (Array2)
+import Expect
+import Test exposing (..)
 
 
 tuple23 : Array2 ( Int, Int )
@@ -72,10 +72,10 @@ all =
                             , [ "b", "b", "a" ]
                             ]
                 in
-                    Expect.equal (Array2.fill 0 1 "c" arr2) <|
-                        Array2.fromList2
-                            [ [ "c", "c", "c" ]
-                            , [ "c", "b", "c" ]
-                            , [ "b", "b", "c" ]
-                            ]
+                Expect.equal (Array2.fill 0 1 "c" arr2) <|
+                    Array2.fromList2
+                        [ [ "c", "c", "c" ]
+                        , [ "c", "b", "c" ]
+                        , [ "b", "b", "c" ]
+                        ]
         ]
