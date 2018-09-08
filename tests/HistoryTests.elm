@@ -1,8 +1,8 @@
-module HistoryTests exposing (..)
+module HistoryTests exposing (all)
 
-import Test exposing (..)
 import Expect
 import History
+import Test exposing (..)
 
 
 all : Test
@@ -32,9 +32,9 @@ all =
                     ( popped5, history5 ) =
                         History.redo 3 history4 |> Maybe.withDefault ( 0, history4 )
                 in
-                    Expect.equal
-                        ( popped1, popped2, result3, popped4, popped5 )
-                        ( 3, 2, Nothing, 3, 4 )
+                Expect.equal
+                    ( popped1, popped2, result3, popped4, popped5 )
+                    ( 3, 2, Nothing, 3, 4 )
         , test "ignores same item" <|
             \() ->
                 let
@@ -55,7 +55,7 @@ all =
                     result4 =
                         History.redo 2 history3
                 in
-                    Expect.equal
-                        ( popped1, result2, popped3, result4 )
-                        ( 1, Nothing, 2, Nothing )
+                Expect.equal
+                    ( popped1, result2, popped3, result4 )
+                    ( 1, Nothing, 2, Nothing )
         ]

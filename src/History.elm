@@ -1,13 +1,12 @@
-module History
-    exposing
-        ( History
-        , initialize
-        , push
-        , undo
-        , redo
-        , hasPrevious
-        , hasNext
-        )
+module History exposing
+    ( History
+    , hasNext
+    , hasPrevious
+    , initialize
+    , push
+    , redo
+    , undo
+    )
 
 
 type History a
@@ -35,10 +34,11 @@ push item ((History size previous next) as history) =
         nextPrevious =
             if sameAsHead item history then
                 previous
+
             else
                 List.take size <| item :: previous
     in
-        History size nextPrevious []
+    History size nextPrevious []
 
 
 undo : a -> History a -> Maybe ( a, History a )

@@ -1,21 +1,20 @@
-module SelectionArray
-    exposing
-        ( SelectionArray
-        , init
-        , select
-        , updateCurrent
-        , deleteCurrent
-        , swapCurrent
-        , insertAfterCurrent
-        , append
-        , isSingle
-        , get
-        , toList
-        , length
-        , map
-        )
+module SelectionArray exposing
+    ( SelectionArray
+    , append
+    , deleteCurrent
+    , get
+    , init
+    , insertAfterCurrent
+    , isSingle
+    , length
+    , map
+    , select
+    , swapCurrent
+    , toList
+    , updateCurrent
+    )
 
-import Array.Hamt as Array exposing (Array)
+import Array exposing (Array)
 
 
 type alias SelectionArray a =
@@ -55,6 +54,7 @@ partitionWithItem item items =
         x :: xs ->
             if x == item then
                 Just ( [], xs )
+
             else
                 Maybe.map (\( ys, zs ) -> ( x :: ys, zs )) <|
                     partitionWithItem item xs
@@ -126,7 +126,7 @@ get : Int -> SelectionArray a -> a
 get index array =
     let
         i =
-            index % length array
+            modBy (length array) index
 
         prevSize =
             Array.length array.previous
@@ -134,10 +134,11 @@ get index array =
         maybe =
             if i < prevSize then
                 Array.get i array.previous
+
             else
                 Array.get (i - 1 - prevSize) array.next
     in
-        Maybe.withDefault array.current maybe
+    Maybe.withDefault array.current maybe
 
 
 toList : SelectionArray a -> List a

@@ -1,22 +1,35 @@
-module Events
-    exposing
-        ( decodeMouseEvent
-        , decodeTouchEvent
-        , decodeWheelEvent
-        , onWithStopAndPrevent
-        , onDragStart
-        , onDrop
-        , preventDefault
-        , stopPropagation
-        , prepareDoubleClick
-        , onSingleOrDoubleClick
-        , setDummyDragData
-        )
+module Events exposing
+    ( decodeMouseEvent
+    , decodeTouchEvent
+    , decodeWheelEvent
+    , onDragStart
+    , onDrop
+    , onSingleOrDoubleClick
+    , onWithStopAndPrevent
+    , prepareDoubleClick
+    , preventDefault
+    , setDummyDragData
+    , stopPropagation
+    )
 
-import Json.Decode as Json
 import Html
-import Html.Events as HE
 import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode as Json
+import String
+import Tuple
+
+
+type alias CustomDecoder msg =
+    Json.Decoder
+        { message : msg
+        , stopPropagation : Bool
+        , preventDefault : Bool
+        }
+
+
+type alias PairDecoder msg =
+    Json.Decoder ( msg, Bool )
 
 
 minusPos : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
@@ -28,15 +41,15 @@ decodeListLike : Json.Decoder a -> Json.Decoder (List a)
 decodeListLike decoder =
     let
         decodeIndex i =
-            Json.field (toString i) decoder
+            Json.field (String.fromInt i) decoder
 
         list length =
             List.range 0 (length - 1)
                 |> List.map decodeIndex
                 |> List.foldr (Json.map2 (::)) (Json.succeed [])
     in
-        Json.field "length" Json.int
-            |> Json.andThen list
+    Json.field "length" Json.int
+        |> Json.andThen list
 
 
 decodeTouchEvent : (List ( Float, Float ) -> msg) -> Json.Decoder msg
@@ -51,20 +64,20 @@ decodeTouchEvent tagger =
         minusPositions positions base =
             List.map (\pos -> minusPos pos base) positions
     in
-        Json.map tagger <|
-            Json.map2 minusPositions decodeTouches decodeTarget
+    Json.map tagger <|
+        Json.map2 minusPositions decodeTouches decodeTarget
 
 
 decodeOffset : Json.Decoder ( Float, Float )
 decodeOffset =
-    Json.map2 (,)
+    Json.map2 Tuple.pair
         (Json.field "offsetLeft" Json.float)
         (Json.field "offsetTop" Json.float)
 
 
 decodeClientPos : Json.Decoder ( Float, Float )
 decodeClientPos =
-    Json.map2 (,)
+    Json.map2 Tuple.pair
         (Json.field "clientX" Json.float)
         (Json.field "clientY" Json.float)
 
@@ -75,7 +88,7 @@ decodeRelativePos =
         decodeTarget =
             Json.field "currentTarget" decodeOffset
     in
-        Json.map2 minusPos decodeClientPos decodeTarget
+    Json.map2 minusPos decodeClientPos decodeTarget
 
 
 decodeMouseEvent : (( Float, Float ) -> msg) -> Json.Decoder msg
@@ -83,23 +96,30 @@ decodeMouseEvent tagger =
     Json.map tagger decodeRelativePos
 
 
-stopAndPrevent : HE.Options
-stopAndPrevent =
-    { stopPropagation = True
-    , preventDefault = True
-    }
+withFlag : Bool -> Json.Decoder msg -> PairDecoder msg
+withFlag bool decoder =
+    let
+        wrap msg =
+            ( msg, bool )
+    in
+    Json.map wrap decoder
 
 
-prevent : HE.Options
-prevent =
-    { preventDefault = True
-    , stopPropagation = False
-    }
+stopAndPrevent : Bool -> Bool -> Json.Decoder msg -> CustomDecoder msg
+stopAndPrevent stop prevent decoder =
+    let
+        wrap msg =
+            { message = msg
+            , stopPropagation = stop
+            , preventDefault = prevent
+            }
+    in
+    Json.map wrap decoder
 
 
 onWithStopAndPrevent : String -> Json.Decoder msg -> Html.Attribute msg
 onWithStopAndPrevent eventName decoder =
-    HE.onWithOptions eventName stopAndPrevent decoder
+    HE.custom eventName (stopAndPrevent True True decoder)
 
 
 preventDefault : String -> Html.Attribute msg
@@ -119,7 +139,7 @@ onDragStart msg =
 
 onDrop : msg -> Html.Attribute msg
 onDrop msg =
-    HE.onWithOptions "drop" prevent <| Json.succeed msg
+    HE.preventDefaultOn "drop" (withFlag True <| Json.succeed msg)
 
 
 {-| HACK: Double tap support on iOS
@@ -154,11 +174,12 @@ onSingleOrDoubleClick singleMessage doubleMessage =
         chooseMessage isDoubleClick =
             if isDoubleClick then
                 doubleMessage
+
             else
                 singleMessage
     in
-        HE.onWithOptions "click" prevent <|
-            Json.map chooseMessage decodeClicked
+    HE.preventDefaultOn "click"
+        (withFlag True <| Json.map chooseMessage decodeClicked)
 
 
 decodeClicked : Json.Decoder Bool
@@ -168,10 +189,10 @@ decodeClicked =
             Json.map ((==) "true") <|
                 Json.at [ "currentTarget", "dataset", "clicked" ] Json.string
     in
-        Json.oneOf
-            [ decodeData
-            , Json.succeed False
-            ]
+    Json.oneOf
+        [ decodeData
+        , Json.succeed False
+        ]
 
 
 {-| Set dummy data to `event.dataTransfer` on dragstart event for cross-browser
@@ -187,7 +208,7 @@ setDummyDragData =
 
 decodeDelta : Json.Decoder ( Float, Float )
 decodeDelta =
-    Json.map2 (,)
+    Json.map2 Tuple.pair
         (Json.field "deltaX" Json.float)
         (Json.field "deltaY" Json.float)
 

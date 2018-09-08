@@ -1,7 +1,7 @@
-module Array2 exposing (..)
+module Array2 exposing (Array2, fill, foldl, foldr, fromList2, get, indexedMap, initialize, map, move, resize, set, toList, toList2)
 
-import Array.Hamt as Array exposing (Array)
-import Set
+import Array exposing (Array)
+import Set exposing (Set)
 
 
 type alias Array2 a =
@@ -19,16 +19,18 @@ set col row newItem =
         update c oldItem =
             if col == c then
                 newItem
+
             else
                 oldItem
 
         mapRow r cols =
             if r == row then
                 Array.indexedMap update cols
+
             else
                 cols
     in
-        Array.indexedMap mapRow
+    Array.indexedMap mapRow
 
 
 initialize : Int -> Int -> (Int -> Int -> a) -> Array2 a
@@ -37,7 +39,7 @@ initialize cols rows f =
         makeRow row =
             Array.initialize cols (\col -> f col row)
     in
-        Array.initialize rows makeRow
+    Array.initialize rows makeRow
 
 
 map : (a -> b) -> Array2 a -> Array2 b
@@ -51,7 +53,7 @@ indexedMap f =
         mapRow row =
             Array.indexedMap (\col x -> f col row x)
     in
-        Array.indexedMap mapRow
+    Array.indexedMap mapRow
 
 
 toList2 : Array2 a -> List (List a)
@@ -99,36 +101,17 @@ move dx dy default arr2 =
                 Just row ->
                     Array.indexedMap (moveCol row) row
     in
-        Array.indexedMap moveRow arr2
+    Array.indexedMap moveRow arr2
 
 
 fill : Int -> Int -> a -> Array2 a -> Array2 a
 fill x y to arr2 =
     let
-        neighbors x y =
-            [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
-
-        fillRegion a ( x, y ) ( visited, arr2 ) =
-            case get x y arr2 of
-                Nothing ->
-                    ( visited, arr2 )
-
-                Just c ->
-                    if Set.member ( x, y ) visited then
-                        ( visited, arr2 )
-                    else if c == a then
-                        List.foldl
-                            (fillRegion a)
-                            ( Set.insert ( x, y ) visited, set x y to arr2 )
-                            (neighbors x y)
-                    else
-                        ( Set.insert ( x, y ) visited, arr2 )
-
         start a =
-            fillRegion a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second
+            fillRegion to a ( x, y ) ( Set.empty, arr2 ) |> Tuple.second
     in
-        Maybe.map start (get x y arr2)
-            |> Maybe.withDefault arr2
+    Maybe.map start (get x y arr2)
+        |> Maybe.withDefault arr2
 
 
 resize : Int -> Int -> a -> Array2 a -> Array2 a
@@ -138,4 +121,29 @@ resize cols rows default arr2 =
             get x y arr2
                 |> Maybe.withDefault default
     in
-        initialize cols rows getItem
+    initialize cols rows getItem
+
+
+neighbors : Int -> Int -> List ( Int, Int )
+neighbors x y =
+    [ ( x - 1, y ), ( x + 1, y ), ( x, y - 1 ), ( x, y + 1 ) ]
+
+
+fillRegion : a -> a -> ( Int, Int ) -> ( Set ( Int, Int ), Array2 a ) -> ( Set ( Int, Int ), Array2 a )
+fillRegion to a ( x, y ) ( visited, arr2 ) =
+    case get x y arr2 of
+        Nothing ->
+            ( visited, arr2 )
+
+        Just c ->
+            if Set.member ( x, y ) visited then
+                ( visited, arr2 )
+
+            else if c == a then
+                List.foldl
+                    (fillRegion to a)
+                    ( Set.insert ( x, y ) visited, set x y to arr2 )
+                    (neighbors x y)
+
+            else
+                ( Set.insert ( x, y ) visited, arr2 )

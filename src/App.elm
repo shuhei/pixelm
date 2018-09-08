@@ -1,20 +1,22 @@
-port module App exposing (..)
+port module App exposing (main)
 
-import Array.Hamt as Array exposing (Array)
+import Array exposing (Array)
+import Array2 exposing (Array2)
+import Browser
+import Color exposing (Color)
+import ColorUtil exposing (RGBA)
 import Dict
+import Events
+import History exposing (History)
 import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Html.Lazy as HL
 import Json.Decode as Json
+import SelectionArray exposing (SelectionArray)
 import Svg exposing (Svg)
 import Svg.Attributes as SA
-import Array2 exposing (Array2)
-import Color exposing (Color)
-import ColorUtil exposing (RGBA)
-import Events
-import SelectionArray exposing (SelectionArray)
-import History exposing (History)
+
 
 
 ---- MODEL ----
@@ -164,7 +166,7 @@ init flags =
             , offset = ( 0, 0 )
             }
     in
-        ( model, Cmd.none )
+    ( model, Cmd.none )
 
 
 type DownloadFormat
@@ -224,14 +226,15 @@ update msg model =
                 mode =
                     if model.mode == Bucket then
                         Bucket
+
                     else
                         Paint
             in
-                ( updateColorModal
-                    (ColorUtil.hue color)
-                    { model | foregroundColor = color, mode = mode }
-                , Cmd.none
-                )
+            ( updateColorModal
+                (ColorUtil.hue color)
+                { model | foregroundColor = color, mode = mode }
+            , Cmd.none
+            )
 
         UpdateHue newHue ->
             let
@@ -241,9 +244,9 @@ update msg model =
                 newColor =
                     ColorUtil.hsv newHue saturation value alpha
             in
-                ( updateColorModal newHue { model | foregroundColor = newColor }
-                , Cmd.none
-                )
+            ( updateColorModal newHue { model | foregroundColor = newColor }
+            , Cmd.none
+            )
 
         UpdateSV newSaturatioin newValue ->
             let
@@ -261,9 +264,9 @@ update msg model =
                 newColor =
                     ColorUtil.hsv newHue newSaturatioin newValue alpha
             in
-                ( updateColorModal newHue { model | foregroundColor = newColor }
-                , Cmd.none
-                )
+            ( updateColorModal newHue { model | foregroundColor = newColor }
+            , Cmd.none
+            )
 
         ClearCanvas ->
             ( { model
@@ -317,9 +320,9 @@ update msg model =
                         }
                     }
             in
-                ( { model | modalConfig = NoModal }
-                , download data
-                )
+            ( { model | modalConfig = NoModal }
+            , download data
+            )
 
         SelectFrame frame ->
             ( { model
@@ -344,16 +347,16 @@ update msg model =
                 copy =
                     { frame | id = model.frameSequence }
             in
-                ( { model
-                    | history = pushHistory model
-                    , frames =
-                        SelectionArray.insertAfterCurrent copy <|
-                            SelectionArray.select frame model.frames
-                    , frameSequence = model.frameSequence + 1
-                    , modalConfig = NoModal
-                  }
-                , Cmd.none
-                )
+            ( { model
+                | history = pushHistory model
+                , frames =
+                    SelectionArray.insertAfterCurrent copy <|
+                        SelectionArray.select frame model.frames
+                , frameSequence = model.frameSequence + 1
+                , modalConfig = NoModal
+              }
+            , Cmd.none
+            )
 
         ShowFrameModal frame ->
             ( { model | modalConfig = FrameModal frame }
@@ -394,17 +397,17 @@ update msg model =
                         | grid = Array2.resize resolution resolution ColorUtil.transparent frame.grid
                     }
             in
-                ( resetZoom
-                    (model.resolution /= resolution)
-                    { model
-                        | fps = fps
-                        , resolution = resolution
-                        , modalConfig = NoModal
-                        , history = pushHistory model
-                        , frames = SelectionArray.map resizeFrame model.frames
-                    }
-                , Cmd.none
-                )
+            ( resetZoom
+                (model.resolution /= resolution)
+                { model
+                    | fps = fps
+                    , resolution = resolution
+                    , modalConfig = NoModal
+                    , history = pushHistory model
+                    , frames = SelectionArray.map resizeFrame model.frames
+                }
+            , Cmd.none
+            )
 
         CloseModal ->
             ( { model | modalConfig = NoModal }
@@ -446,7 +449,7 @@ update msg model =
                         [] ->
                             model
             in
-                ( nextModel, Cmd.none )
+            ( nextModel, Cmd.none )
 
         TouchMoveOnCanvas touches ->
             let
@@ -461,7 +464,7 @@ update msg model =
                         [] ->
                             model
             in
-                ( nextModel, Cmd.none )
+            ( nextModel, Cmd.none )
 
         MouseWheelOnCanvas ( _, deltaY ) pos ->
             ( handleZoom model deltaY pos
@@ -546,6 +549,7 @@ resetZoom shouldReset model =
             | zoom = model.canvasSize / toFloat model.resolution
             , offset = ( 0, 0 )
         }
+
     else
         model
 
@@ -559,7 +563,7 @@ euclidDistance ( x1, y1 ) ( x2, y2 ) =
         dy =
             y2 - y1
     in
-        sqrt <| dx * dx + dy * dy
+    sqrt <| dx * dx + dy * dy
 
 
 zoomRate : Float
@@ -579,6 +583,7 @@ handleZoom model deltaY pos =
         zoomBy =
             if deltaY > 0 then
                 zoomRate
+
             else
                 1 / zoomRate
 
@@ -588,18 +593,21 @@ handleZoom model deltaY pos =
         offset =
             if deltaY > 0 then
                 interpolate (originalPos model.zoom model.offset pos) model.offset (1 / zoomBy)
+
             else
                 interpolate
                     model.offset
                     ( 0, 0 )
                     ((1 / zoom - 1 / model.zoom) / (1 / minZoom - 1 / model.zoom))
     in
-        if zoom <= minZoom then
-            { model | zoom = minZoom, offset = ( 0, 0 ) }
-        else if zoom > minZoom && zoom < maxZoom then
-            { model | zoom = zoom, offset = offset }
-        else
-            model
+    if zoom <= minZoom then
+        { model | zoom = minZoom, offset = ( 0, 0 ) }
+
+    else if zoom > minZoom && zoom < maxZoom then
+        { model | zoom = zoom, offset = offset }
+
+    else
+        model
 
 
 handleDoublePointerEvent : Model -> ( Float, Float ) -> ( Float, Float ) -> Model
@@ -608,21 +616,21 @@ handleDoublePointerEvent model t1 t2 =
         distance =
             euclidDistance t1 t2
     in
-        case model.previousDistance of
-            Nothing ->
+    case model.previousDistance of
+        Nothing ->
+            { model
+                | previousDistance = Just distance
+                , previousMouseDown = Nothing
+            }
+
+        Just previousDistance ->
+            handleZoom
                 { model
                     | previousDistance = Just distance
                     , previousMouseDown = Nothing
                 }
-
-            Just previousDistance ->
-                handleZoom
-                    { model
-                        | previousDistance = Just distance
-                        , previousMouseDown = Nothing
-                    }
-                    (distance - previousDistance)
-                    (interpolate t1 t2 0.5)
+                (distance - previousDistance)
+                (interpolate t1 t2 0.5)
 
 
 handleSinglePointerDown : Model -> ( Float, Float ) -> Model
@@ -631,12 +639,12 @@ handleSinglePointerDown model pos =
         pixelPos =
             getPixelPos model.zoom model.offset pos
     in
-        { model
-            | history = pushHistory model
-            , frames = updateCurrentFrame pixelPos model
-            , isMouseDown = True
-            , previousMouseDown = Just pixelPos
-        }
+    { model
+        | history = pushHistory model
+        , frames = updateCurrentFrame pixelPos model
+        , isMouseDown = True
+        , previousMouseDown = Just pixelPos
+    }
 
 
 handleSinglePointerMove : Model -> ( Float, Float ) -> Model
@@ -645,14 +653,15 @@ handleSinglePointerMove model pos =
         pixelPos =
             getPixelPos model.zoom model.offset pos
     in
-        if model.isMouseDown then
-            { model
-                | frames = updateCurrentFrame pixelPos model
-                , previousMouseDown = Just pixelPos
-                , previousDistance = Nothing
-            }
-        else
-            model
+    if model.isMouseDown then
+        { model
+            | frames = updateCurrentFrame pixelPos model
+            , previousMouseDown = Just pixelPos
+            , previousDistance = Nothing
+        }
+
+    else
+        model
 
 
 interpolate : ( Float, Float ) -> ( Float, Float ) -> Float -> ( Float, Float )
@@ -677,7 +686,7 @@ getPixelPos zoom offset pos =
         ( ox, oy ) =
             originalPos zoom offset pos
     in
-        ( floor ox, floor oy )
+    ( floor ox, floor oy )
 
 
 updateCurrentFrame : ( Int, Int ) -> Model -> Frames
@@ -686,7 +695,7 @@ updateCurrentFrame ( col, row ) model =
         frames =
             model.frames
 
-        update frame =
+        updateFrame frame =
             case model.mode of
                 Paint ->
                     { frame | grid = Array2.set col row model.foregroundColor frame.grid }
@@ -712,7 +721,7 @@ updateCurrentFrame ( col, row ) model =
                                         frame.grid
                             }
     in
-        { frames | current = update frames.current }
+    { frames | current = updateFrame frames.current }
 
 
 type alias DownloadData =
@@ -742,7 +751,7 @@ view model =
         [ viewGrid model.resolution model.canvasSize model.zoom model.offset model.mode model.frames.current.grid
         , viewMenus model.mode model.images (History.hasPrevious model.history) (History.hasNext model.history)
         , viewCurrentColor model.foregroundColor <|
-            usedColors (SelectionArray.toList model.frames)
+            collectUsedColors (SelectionArray.toList model.frames)
         , viewFrames model.resolution model.frameSize model.images model.fps model.frames
         , viewModal model.modalConfig (SelectionArray.isSingle model.frames) model.foregroundColor
         ]
@@ -794,6 +803,7 @@ viewModal config isSingleFrame foregroundColor =
                         , viewModalButton "primary" "GIF" <| Download GIFFormat
                         , closeButton
                         ]
+
                     else
                         [ viewModalButton "primary" "Animated GIF" <| Download AnimatedGIFFormat
                         , closeButton
@@ -802,6 +812,7 @@ viewModal config isSingleFrame foregroundColor =
                 FrameModal frame ->
                     if isSingleFrame then
                         [ duplicateButton frame, closeButton ]
+
                     else
                         [ duplicateButton frame, deleteButton frame, closeButton ]
 
@@ -823,19 +834,19 @@ viewModal config isSingleFrame foregroundColor =
                     , closeButton
                     ]
     in
-        Html.div
-            [ HA.classList
-                [ ( "modal", True )
-                , ( "modal--shown", config /= NoModal )
-                ]
-            , HE.onClick CloseModal
+    Html.div
+        [ HA.classList
+            [ ( "modal", True )
+            , ( "modal--shown", config /= NoModal )
             ]
-            [ Html.div
-                [ HA.class "modal-content"
-                , Events.stopPropagation "onclick"
-                ]
-                content
+        , HE.onClick CloseModal
+        ]
+        [ Html.div
+            [ HA.class "modal-content"
+            , Events.stopPropagation "onclick"
             ]
+            content
+        ]
 
 
 {-| Keep hue in order to change hue even when a grayscale color is selected
@@ -857,52 +868,49 @@ viewColorModal selectedHue selectedColor =
             UpdateSV (x / 240) (1 - y / 240)
 
         toPx num =
-            toString num ++ "px"
+            String.fromFloat num ++ "px"
     in
+    [ Html.div
+        [ HA.class "color-selector__row" ]
+        (List.map (\c -> viewColor [] SelectColor (c == selectedColor) c) colors)
+    , Html.div
+        [ HA.class "color-picker" ]
         [ Html.div
-            [ HA.class "color-selector__row" ]
-            (List.map (\c -> viewColor [] SelectColor (c == selectedColor) c) colors)
-        , Html.div
-            [ HA.class "color-picker" ]
+            [ HA.class "color-picker__color"
+            , HA.style "background-color" color
+            , HE.on "click" <| Events.decodeMouseEvent pickSV
+            ]
             [ Html.div
-                [ HA.class "color-picker__color"
-                , HA.style [ ( "background-color", color ) ]
-                , HE.on "click" <| Events.decodeMouseEvent pickSV
-                ]
+                [ HA.class "color-picker__saturation" ]
                 [ Html.div
-                    [ HA.class "color-picker__saturation" ]
+                    [ HA.class "color-picker__value" ]
                     [ Html.div
-                        [ HA.class "color-picker__value" ]
-                        [ Html.div
-                            [ HA.class "color-picker__sv-pointer"
-                            , HA.style
-                                [ ( "left", toPx <| saturation * 240 - 5 )
-                                , ( "top", toPx <| (1 - value) * 240 - 5 )
-                                ]
-                            ]
-                            []
+                        [ HA.class "color-picker__sv-pointer"
+                        , HA.style "left" (toPx <| saturation * 240 - 5)
+                        , HA.style "top" (toPx <| (1 - value) * 240 - 5)
                         ]
+                        []
                     ]
-                ]
-            , Html.div
-                [ HA.class "color-picker__hue"
-                , HE.on "click" <| Events.decodeMouseEvent pickHue
-                ]
-                [ Html.div
-                    [ HA.class "color-picker__hue-pointer"
-                    , HA.style
-                        [ ( "top", toPx <| 240 * selectedHue / (2 * pi) - 3 ) ]
-                    ]
-                    []
                 ]
             ]
+        , Html.div
+            [ HA.class "color-picker__hue"
+            , HE.on "click" <| Events.decodeMouseEvent pickHue
+            ]
+            [ Html.div
+                [ HA.class "color-picker__hue-pointer"
+                , HA.style "top" (toPx <| 240 * selectedHue / (2 * pi) - 3)
+                ]
+                []
+            ]
         ]
+    ]
 
 
 viewBox : Float -> Float -> Float -> Float -> String
 viewBox minX minY width height =
     [ minX, minY, width, height ]
-        |> List.map toString
+        |> List.map String.fromFloat
         |> String.join " "
 
 
@@ -912,45 +920,44 @@ viewGrid resolution canvasSize zoom ( offsetX, offsetY ) mode grid =
         viewSize =
             canvasSize / zoom
     in
-        Html.div
-            [ HA.class "pixel-grid-container"
-            , sizeStyle canvasSize
-            , HA.style
-                [ ( "cursor"
-                  , if mode == Move then
-                        "move"
-                    else
-                        "pointer"
-                  )
-                ]
-            , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
-            , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
-            , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
-            , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent TouchStartOnCanvas
-            , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent TouchMoveOnCanvas
-            , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
-            , Events.onWithStopAndPrevent "mousewheel" <| Events.decodeWheelEvent MouseWheelOnCanvas
+    Html.div
+        [ HA.class "pixel-grid-container"
+        , widthStyle canvasSize
+        , heightStyle canvasSize
+        , HA.style "cursor" <|
+            if mode == Move then
+                "move"
+
+            else
+                "pointer"
+        , Events.onWithStopAndPrevent "mousedown" <| Events.decodeMouseEvent MouseDownOnCanvas
+        , Events.onWithStopAndPrevent "mousemove" <| Events.decodeMouseEvent MouseMoveOnCanvas
+        , Events.onWithStopAndPrevent "mouseup" <| Json.succeed MouseUpOnCanvas
+        , Events.onWithStopAndPrevent "touchstart" <| Events.decodeTouchEvent TouchStartOnCanvas
+        , Events.onWithStopAndPrevent "touchmove" <| Events.decodeTouchEvent TouchMoveOnCanvas
+        , Events.onWithStopAndPrevent "touchend" <| Json.succeed MouseUpOnCanvas
+        , Events.onWithStopAndPrevent "mousewheel" <| Events.decodeWheelEvent MouseWheelOnCanvas
+        ]
+        [ Svg.svg
+            [ SA.class "pixel-grid"
+            , SA.width <| String.fromFloat canvasSize
+            , SA.height <| String.fromFloat canvasSize
+            , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
+            , SA.shapeRendering "crispEdges"
             ]
-            [ Svg.svg
-                [ SA.class "pixel-grid"
-                , SA.width <| toString canvasSize
-                , SA.height <| toString canvasSize
-                , SA.viewBox <| viewBox offsetX offsetY viewSize viewSize
-                , SA.shapeRendering "crispEdges"
-                ]
-                [ viewRects grid
-                , viewBorders resolution
-                ]
+            [ viewRects grid
+            , viewBorders resolution
             ]
+        ]
 
 
 drawLine : Float -> Float -> Float -> Float -> Svg msg
 drawLine x1 y1 x2 y2 =
     Svg.line
-        [ SA.x1 <| toString x1
-        , SA.y1 <| toString y1
-        , SA.x2 <| toString x2
-        , SA.y2 <| toString y2
+        [ SA.x1 <| String.fromFloat x1
+        , SA.y1 <| String.fromFloat y1
+        , SA.x2 <| String.fromFloat x2
+        , SA.y2 <| String.fromFloat y2
         , HA.attribute "vector-effect" "non-scaling-stroke"
         ]
         []
@@ -968,12 +975,12 @@ viewBorders resolution =
         horizontal n =
             drawLine 0 (toFloat n) (toFloat resolution) (toFloat n)
     in
-        Svg.g
-            [ SA.class "grid-borders"
-            , SA.strokeWidth "1"
-            , SA.stroke "white"
-            ]
-            (List.map vertical ns ++ List.map horizontal ns)
+    Svg.g
+        [ SA.class "grid-borders"
+        , SA.strokeWidth "1"
+        , SA.stroke "white"
+        ]
+        (List.map vertical ns ++ List.map horizontal ns)
 
 
 viewRects : Grid -> Svg msg
@@ -983,8 +990,8 @@ viewRects grid =
             Svg.rect
                 [ SA.width "1"
                 , SA.height "1"
-                , SA.x <| toString <| toFloat col
-                , SA.y <| toString <| toFloat row
+                , SA.x <| String.fromFloat <| toFloat col
+                , SA.y <| String.fromFloat <| toFloat row
                 , SA.fill <| ColorUtil.toColorString pixel
                 ]
                 []
@@ -992,7 +999,7 @@ viewRects grid =
         rects =
             Array2.toList <| Array2.indexedMap makeRect grid
     in
-        Svg.g [] rects
+    Svg.g [] rects
 
 
 viewMenu : Bool -> Bool -> Msg -> String -> Html Msg -> Html Msg
@@ -1008,6 +1015,7 @@ viewMenu selected disabled msg label content =
         , HE.onClick <|
             if disabled then
                 NoOp
+
             else
                 msg
         , Events.onWithStopAndPrevent "mousedown" <| Json.succeed NoOp
@@ -1022,23 +1030,23 @@ viewMenus selectedMode images withUndo withRedo =
         modeMenu mode content =
             viewMenu (mode == selectedMode) False (SelectMode mode) content
     in
-        Html.div [ HA.class "menu" ]
-            [ Html.div
-                []
-                [ modeMenu Paint "Paint" <| svgIcon images.pencil
-                , modeMenu Eraser "Eraser" <| svgIcon images.eraser
-                , modeMenu Bucket "Bucket" <| svgIcon images.bucket
-                , modeMenu Move "Move" <| svgIcon images.move
-                , viewMenu False False ClearCanvas "Clear" <| svgIcon images.trash
-                , viewMenu False False ShowSettingsModal "Settings" <| svgIcon images.settings
-                , viewMenu False False ShowDownloadModal "Download" <| svgIcon images.download
-                ]
-            , Html.div
-                []
-                [ viewMenu False (not withUndo) Undo "Undo" <| svgIcon images.undo
-                , viewMenu False (not withRedo) Redo "Redo" <| svgIcon images.redo
-                ]
+    Html.div [ HA.class "menu" ]
+        [ Html.div
+            []
+            [ modeMenu Paint "Paint" <| svgIcon images.pencil
+            , modeMenu Eraser "Eraser" <| svgIcon images.eraser
+            , modeMenu Bucket "Bucket" <| svgIcon images.bucket
+            , modeMenu Move "Move" <| svgIcon images.move
+            , viewMenu False False ClearCanvas "Clear" <| svgIcon images.trash
+            , viewMenu False False ShowSettingsModal "Settings" <| svgIcon images.settings
+            , viewMenu False False ShowDownloadModal "Download" <| svgIcon images.download
             ]
+        , Html.div
+            []
+            [ viewMenu False (not withUndo) Undo "Undo" <| svgIcon images.undo
+            , viewMenu False (not withRedo) Redo "Redo" <| svgIcon images.redo
+            ]
+        ]
 
 
 viewCurrentColor : Color -> List Color -> Html Msg
@@ -1051,9 +1059,9 @@ viewCurrentColor selected usedColors =
                 (selected == Color.white)
                 selected
     in
-        Html.div
-            [ HA.class "color-selector" ]
-            (foreground :: List.map (viewColor [] SelectColor False) usedColors)
+    Html.div
+        [ HA.class "color-selector" ]
+        (foreground :: List.map (viewColor [] SelectColor False) usedColors)
 
 
 viewColor : List (Html.Attribute msg) -> (Color -> msg) -> Bool -> Color -> Html msg
@@ -1062,32 +1070,31 @@ viewColor attrs tagger selected color =
         borderColor =
             if selected then
                 Color.lightGray
+
             else
                 color
 
         attributes =
             List.append
                 [ HA.class "color-selector__color"
-                , HA.style
-                    [ ( "background-color", ColorUtil.toColorString color )
-                    , ( "border-color", ColorUtil.toColorString borderColor )
-                    ]
+                , HA.style "background-color" <| ColorUtil.toColorString color
+                , HA.style "border-color" <| ColorUtil.toColorString borderColor
                 , HE.onClick <| tagger color
                 ]
                 attrs
     in
-        Html.div attributes []
+    Html.div attributes []
 
 
-usedColors : List Frame -> List Color
-usedColors frames =
+collectUsedColors : List Frame -> List Color
+collectUsedColors frames =
     let
         putColor c used =
             Dict.insert (ColorUtil.toColorString c) c used
     in
-        List.foldr (\frame used -> Array2.foldr putColor used frame.grid) Dict.empty frames
-            |> Dict.values
-            |> List.filter (\x -> x /= ColorUtil.transparent)
+    List.foldr (\frame used -> Array2.foldr putColor used frame.grid) Dict.empty frames
+        |> Dict.values
+        |> List.filter (\x -> x /= ColorUtil.transparent)
 
 
 viewFrames : Int -> Float -> ImagePaths -> Int -> Frames -> Html Msg
@@ -1098,6 +1105,7 @@ viewFrames resolution size images fps frames =
         List.concat
             [ if SelectionArray.length frames > 1 then
                 [ viewPreview resolution size fps frames ]
+
               else
                 []
             , List.map (viewFrame resolution size False) <| Array.toList frames.previous
@@ -1114,7 +1122,7 @@ viewPreview resolution size fps frames =
             SelectionArray.length frames
 
         keyframeName =
-            "preview-" ++ toString fps ++ "-" ++ toString frameCount
+            "preview-" ++ String.fromInt fps ++ "-" ++ String.fromInt frameCount
 
         keyframes =
             String.concat
@@ -1123,7 +1131,7 @@ viewPreview resolution size fps frames =
                 , " {"
                 , "  from { left: 0; }"
                 , "  to { left: -"
-                , toString <| (toFloat frameCount) * size
+                , String.fromFloat <| toFloat frameCount * size
                 , "px; }"
                 , "}"
                 ]
@@ -1132,9 +1140,9 @@ viewPreview resolution size fps frames =
             String.concat
                 [ keyframeName
                 , " "
-                , toString <| (toFloat frameCount) / (toFloat fps)
+                , String.fromFloat <| toFloat frameCount / toFloat fps
                 , "s steps("
-                , toString frameCount
+                , String.fromInt frameCount
                 , ") infinite"
                 ]
 
@@ -1142,22 +1150,21 @@ viewPreview resolution size fps frames =
             List.map (viewThumbnail resolution size []) <|
                 SelectionArray.toList frames
     in
-        Html.div
-            [ HA.class "frame frame-preview"
-            , sizeStyle size
+    Html.div
+        [ HA.class "frame frame-preview"
+        , widthStyle size
+        , heightStyle size
+        ]
+        [ Html.node "style"
+            []
+            [ Html.text keyframes ]
+        , Html.div
+            [ HA.class "frame-preview__inner"
+            , widthStyle (size * toFloat frameCount)
+            , HA.style "animation" animation
             ]
-            [ Html.node "style"
-                []
-                [ Html.text keyframes ]
-            , Html.div
-                [ HA.class "frame-preview__inner"
-                , HA.style
-                    [ ( "width", toString (size * toFloat frameCount) ++ "px" )
-                    , ( "animation", animation )
-                    ]
-                ]
-                frameViews
-            ]
+            frameViews
+        ]
 
 
 viewFrame : Int -> Float -> Bool -> Frame -> Html Msg
@@ -1169,7 +1176,8 @@ viewFrame resolution size selected frame =
                 , ( "frame--normal", not selected )
                 , ( "frame--selected", selected )
                 ]
-            , sizeStyle size
+            , widthStyle size
+            , heightStyle size
             , Events.onSingleOrDoubleClick
                 (SelectFrame frame)
                 (ShowFrameModal frame)
@@ -1183,7 +1191,7 @@ viewFrame resolution size selected frame =
             , Events.setDummyDragData
             ]
     in
-        viewThumbnail resolution size attrs frame
+    viewThumbnail resolution size attrs frame
 
 
 viewThumbnail : Int -> Float -> List (Html.Attribute msg) -> Frame -> Html msg
@@ -1191,8 +1199,8 @@ viewThumbnail resolution size attrs frame =
     Html.div
         attrs
         [ Svg.svg
-            [ SA.width <| toString size
-            , SA.height <| toString size
+            [ SA.width <| String.fromFloat size
+            , SA.height <| String.fromFloat size
             , SA.viewBox <| viewBox 0 0 (toFloat resolution) (toFloat resolution)
             ]
             [ viewRects frame.grid ]
@@ -1203,18 +1211,21 @@ viewAddFrame : Float -> ImagePaths -> Html Msg
 viewAddFrame frameSize images =
     Html.div
         [ HA.class "frame frame--plus"
-        , sizeStyle frameSize
         , HE.onClick AddFrame
+        , widthStyle frameSize
+        , heightStyle frameSize
         ]
         [ svgIcon images.plus ]
 
 
-sizeStyle : Float -> Html.Attribute msg
-sizeStyle size =
-    HA.style
-        [ ( "width", toString size ++ "px" )
-        , ( "height", toString size ++ "px" )
-        ]
+widthStyle : Float -> Html.Attribute msg
+widthStyle size =
+    HA.style "width" <| String.fromFloat size ++ "px"
+
+
+heightStyle : Float -> Html.Attribute msg
+heightStyle size =
+    HA.style "height" <| String.fromFloat size ++ "px"
 
 
 faIcon : String -> Html msg
@@ -1240,7 +1251,7 @@ svgIcon path =
 
 main : Program ImagePaths Model Msg
 main =
-    Html.programWithFlags
+    Browser.element
         { view = HL.lazy view
         , init = init
         , update = update

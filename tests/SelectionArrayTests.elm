@@ -1,9 +1,9 @@
-module SelectionArrayTests exposing (..)
+module SelectionArrayTests exposing (all)
 
-import Test exposing (..)
+import Array.Hamt as Array exposing (Array)
 import Expect
 import SelectionArray exposing (SelectionArray)
-import Array.Hamt as Array exposing (Array)
+import Test exposing (..)
 
 
 fromLists : List a -> a -> List a -> SelectionArray a

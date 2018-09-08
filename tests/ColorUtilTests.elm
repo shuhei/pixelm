@@ -1,9 +1,9 @@
-module ColorUtilTests exposing (..)
+module ColorUtilTests exposing (all)
 
-import Test exposing (..)
-import Expect
 import Color
 import ColorUtil
+import Expect
+import Test exposing (..)
 
 
 all : Test
